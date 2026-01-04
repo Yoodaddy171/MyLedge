@@ -37,7 +37,8 @@ export default function DetailedReportPage() {
       const { data: trx } = await supabase.from('transactions').select('*, item:transaction_items(name, categories(name))');
       if (!trx) return;
       const grouped = trx.reduce((acc: any, curr: any) => {
-        const catName = curr.item?.categories?.name || 'Uncategorized';
+        const item: any = Array.isArray(curr.item) ? curr.item[0] : curr.item;
+        const catName = item?.categories?.name || 'Uncategorized';
         if (!acc[catName]) acc[catName] = { name: catName, value: 0 };
         acc[catName].value += Number(curr.amount);
         return acc;

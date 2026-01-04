@@ -38,7 +38,8 @@ export default function BudgetsPage() {
 
       const spendingMap: any = {};
       trxs?.forEach(t => {
-        const catId = t.item?.category_id;
+        const item: any = Array.isArray(t.item) ? t.item[0] : t.item;
+        const catId = item?.category_id;
         if (catId) spendingMap[catId] = (spendingMap[catId] || 0) + Number(t.amount);
       });
 

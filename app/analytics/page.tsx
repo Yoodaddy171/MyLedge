@@ -48,8 +48,16 @@ export default function AnalyticsPage() {
 
       if (!trx || !assets) return;
 
-      const needs = trx.filter(t => t.item?.categories?.name?.toLowerCase().includes('needs') || t.item?.categories?.name?.toLowerCase().includes('living')).reduce((acc, c) => acc + Number(c.amount), 0);
-      const wants = trx.filter(t => t.item?.categories?.name?.toLowerCase().includes('wants') || t.item?.categories?.name?.toLowerCase().includes('life')).reduce((acc, c) => acc + Number(c.amount), 0);
+      const needs = trx.filter(t => {
+        const item: any = Array.isArray(t.item) ? t.item[0] : t.item;
+        return item?.categories?.name?.toLowerCase().includes('needs') || item?.categories?.name?.toLowerCase().includes('living');
+      }).reduce((acc, c) => acc + Number(c.amount), 0);
+
+      const wants = trx.filter(t => {
+        const item: any = Array.isArray(t.item) ? t.item[0] : t.item;
+        return item?.categories?.name?.toLowerCase().includes('wants') || item?.categories?.name?.toLowerCase().includes('life');
+      }).reduce((acc, c) => acc + Number(c.amount), 0);
+
       const totalIncome = trx.filter(t => t.type === 'income').reduce((acc, c) => acc + Number(c.amount), 0);
       const totalExpense = trx.filter(t => t.type === 'expense').reduce((acc, c) => acc + Number(c.amount), 0);
       const savings = totalIncome - totalExpense;
