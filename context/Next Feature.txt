@@ -1,0 +1,71 @@
+Ringkasan Proyek: Aplikasi Manajemen Keuangan "MyLedger"
+
+Ringkasan Eksekutif
+
+Dokumen ini merangkum analisis dan masukan pengguna terhadap aplikasi manajemen keuangan berbasis web yang disebut "MyLedger". Aplikasi ini dirancang untuk menyediakan dasbor komprehensif bagi pengguna untuk melacak total kekayaan bersih, rincian per rekening, pertumbuhan modal, dan efisiensi finansial. Diskusi yang dianalisis mengungkapkan beberapa fitur utama yang sudah ada, termasuk pelacakan transaksi, pemantauan investasi dengan integrasi API, manajemen utang-piutang, perencanaan anggaran, dan modul manajemen proyek.
+
+Namun, masukan pengguna menyoroti beberapa kebutuhan kritis dan area untuk perbaikan yang signifikan. Permintaan utama adalah penambahan fitur Ringkasan (Summary) yang memungkinkan pemfilteran pengeluaran berdasarkan kategori dan periode waktu (harian, mingguan, bulanan, tahunan). Integrasi fungsionalitas juga menjadi prioritas, terutama permintaan agar pembayaran utang yang dicatat dalam transaksi secara otomatis mengurangi sisa utang di modul terkait. Peningkatan lainnya yang diminta termasuk sistem notifikasi pop-up yang persisten untuk tugas yang mendekati tenggat waktu, penambahan kategorisasi dalam fitur manajemen tugas, dan perbaikan antarmuka pengguna seperti penggunaan menu dropdown untuk daftar proyek. Visi jangka panjang yang dibahas mencakup potensi monetisasi melalui model berlangganan berjenjang dan penambahan fitur analisis saham berbasis AI.
+
+Analisis Mendalam dan Masukan Pengguna
+
+1. Dasbor dan Tampilan Utama
+
+Dasbor adalah pusat kendali aplikasi, yang bertujuan memberikan gambaran finansial secara holistik.
+
+* Tampilan Agregat: Pengguna menginginkan dasbor utama menampilkan tiga metrik besar yang merepresentasikan kondisi finansial "secara intotal semuanya".
+* Rincian per Rekening: Di bawah tampilan agregat, harus ada rincian untuk setiap rekening individual, termasuk berbagai jenis tabungan. Pengguna menyebutkan, "di bawah tetap harus ada dirincin dari masing-masing rekening gua rekening sama termasuk tabungan-tabungan juga."
+* Metrik Kinerja: Aplikasi ini mencakup metrik seperti "capital growth" dan "level efisiensi lu dalam mengatur duit" untuk memberikan wawasan analitis kepada pengguna.
+* Permintaan Tambahan Dasbor: Pengguna meminta agar total utang dan piutang juga ditampilkan di dasbor utama untuk gambaran yang lebih lengkap.
+
+2. Manajemen Investasi
+
+Fitur ini dirancang untuk melacak aset investasi seperti saham dan emas, dengan integrasi data pasar secara langsung.
+
+* Integrasi API: Aplikasi menggunakan API untuk menarik data harga pasar secara real-time dari bursa. Pengguna mengonfirmasi hal ini: "Oh, itu lu ngambil dari internet tuh market price."
+* Sumber Data: Awalnya, API yang digunakan mengalami kendala. Pengguna menyarankan untuk menggunakan Yahoo Finance sebagai sumber data, yang dianggap sudah "cukup" dan "oke".
+* Keterbatasan API Gratis: Pengembang menyebutkan bahwa API gratis yang digunakan memiliki batasan, yaitu hanya dapat menarik data sekali sehari untuk jumlah aset yang terbatas.
+* Permintaan Fitur: Pengguna menginginkan visualisasi data yang lebih baik, seperti grafik yang menunjukkan pergerakan (naik-turun) dari setiap saham yang dimilikinya.
+
+3. Manajemen Utang dan Piutang
+
+Sebuah modul terpisah ada untuk melacak kemajuan pelunasan utang, namun integrasinya masih kurang.
+
+* Fungsionalitas Saat Ini: Fitur "Freedom Progress" memungkinkan pengguna memasukkan total pinjaman, sisa pinjaman, dan tanggal jatuh tempo.
+* Masukan Kritis (Integrasi): Pengguna secara eksplisit meminta agar modul ini terintegrasi dengan modul transaksi utama. Saat pengguna mencatat "pembayaran hutang" di daftar transaksi, sisa utang di modul "Freedom Progress" harus berkurang secara otomatis.
+* Klarifikasi Terminologi: Pengembang dan pengguna mengklarifikasi perbedaan antara "hutang" (uang yang dipinjam pengguna) dan "piutang" (uang yang dipinjamkan pengguna kepada orang lain).
+* Tujuan: Fitur ini bertujuan agar pengguna "bisa tahu gua udah berhutang berapa sama gua udah ngutanin orang berapa."
+
+4. Perencanaan Anggaran dan Proyek
+
+Aplikasi ini menyediakan alat untuk mengelola anggaran spesifik dan proyek jangka panjang.
+
+* Budget Planner: Fitur untuk merencanakan pengeluaran tertentu, seperti perjalanan.
+* Manajemen Proyek: Terinspirasi dari pengalaman pengguna merenovasi rumah, fitur ini memungkinkan pembuatan proyek (contoh: "renovasi rumah", "nikah") dengan anggaran total. Di dalamnya, pengguna dapat merinci setiap item pengeluaran beserta kuantitas dan harga.
+* Masukan UI/UX: Untuk tampilan beberapa proyek, pengguna menyarankan untuk menggunakan sistem dropdown daripada daftar horizontal yang dapat memanjang.
+* Masalah Validasi: Pengguna menemukan kelemahan logika di mana ia dapat memasukkan harga pembelian yang tidak logis tanpa adanya validasi dari sistem. Pengguna mengkritik ini sebagai "logika dasar" yang seharusnya dipertimbangkan.
+
+5. Fitur yang Belum Ada atau Perlu Peningkatan
+
+* Fitur Ringkasan (Summary) - Prioritas Tinggi:
+  * Ini adalah fitur yang paling ditekankan oleh pengguna sebagai fitur yang hilang.
+  * Pengguna ingin dapat memfilter transaksi berdasarkan kategori (misalnya, total pengeluaran untuk "bensin") dan rentang waktu (harian, mingguan, bulanan, tahunan).
+* Manajemen Tugas (Tasks):
+  * Fitur ini sudah ada untuk membuat pengingat.
+  * Namun, pengguna meminta penambahan kategorisasi untuk tugas, seperti "Kegiatan pribadi, kegiatan kantor, kegiatan kuliah, kegiatan lainnya."
+* Sistem Notifikasi dan Pengingat:
+  * Pengembang awalnya menyarankan notifikasi email, namun pengguna merasa itu tidak efektif.
+  * Pengguna mengusulkan notifikasi pop-up yang muncul di dalam aplikasi untuk mengingatkan tugas-tugas mendesak.
+  * Ide ini bertujuan agar pengguna merasa "terganggu" secara positif untuk menyelesaikan tugasnya.
+
+6. Aspek Teknis dan Keamanan Data
+
+* Nama Aplikasi: MyLedger, dengan penjelasan bahwa "Ledger" adalah istilah yang lebih spesifik untuk pencatatan keuangan dibandingkan "Notes".
+* Keamanan Data: Menanggapi kekhawatiran pengguna tentang privasi data, pengembang menjelaskan bahwa data dienkripsi menggunakan metode hashing.
+* Backup dan Restore: Pengembang memiliki kemampuan untuk melakukan backup data pengguna, memastikan data tidak hilang sepenuhnya bahkan jika ada masalah pada sistem.
+* Pengembangan dan Kompleksitas: Pengembang menekankan bahwa membangun aplikasi semacam ini melibatkan logika yang kompleks, termasuk relasi basis data, yang jauh lebih rumit daripada membuat halaman web statis.
+
+7. Visi Masa Depan dan Potensi Monetisasi
+
+* Model Berlangganan: Ada diskusi tentang potensi menjadikan MyLedger sebagai produk komersial dengan model berlangganan (misalnya, Rp 5.000 - Rp 10.000 per bulan).
+* Fitur Berjenjang (Tiered Features): Pengguna menyarankan model di mana fitur-fitur canggih dapat diakses dengan membayar biaya langganan tambahan.
+* Integrasi AI: Terdapat ide untuk menambahkan fitur analisis saham yang didukung AI, yang dapat memberikan rekomendasi kepada pengguna apakah suatu saham "worth it" untuk dibeli pada harga tertentu.

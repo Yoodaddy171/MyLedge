@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { 
-  TrendingUp, Coins, Plus, RefreshCcw, ArrowUpRight, ArrowDownRight, Download, Trash2, X, Edit3
+import {
+  TrendingUp, Coins, Plus, RefreshCcw, ArrowUpRight, ArrowDownRight, Download, Trash2, X, Edit3, Activity, Briefcase
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import * as XLSX from 'xlsx';
@@ -41,21 +41,21 @@ export default function InvestmentsPage() {
       const { data, error } = await supabase.from('assets').select('*').order('type', { ascending: true }).order('symbol', { ascending: true });
       if (error) throw error;
       setAssets(data || []);
-    } catch (err: any) { toast.error("Failed to load assets"); }
+    } catch (err: any) { toast.error("Failed to load investments"); }
     finally { setLoading(false); }
   }
 
   const handleDeleteSingle = async (id: number) => {
-    if (!confirm("Delete position?")) return;
+    if (!confirm("Delete this investment?")) return;
     const { error } = await supabase.from('assets').delete().eq('id', id);
-    if (!error) { toast.success("Asset deleted"); fetchAssets(); }
+    if (!error) { toast.success("Investment removed"); fetchAssets(); }
     else toast.error(error.message);
   };
 
   const handleDeleteBulk = async () => {
-    if (!confirm(`Delete ${selectedIds.length} assets?`)) return;
+    if (!confirm(`Remove ${selectedIds.length} investments?`)) return;
     const { error } = await supabase.from('assets').delete().in('id', selectedIds);
-    if (!error) { toast.success(`${selectedIds.length} assets removed`); setSelectedIds([]); fetchAssets(); }
+    if (!error) { toast.success(`${selectedIds.length} investments removed`); setSelectedIds([]); fetchAssets(); }
     else toast.error(error.message);
   };
 
@@ -80,15 +80,15 @@ export default function InvestmentsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     try {
-        setSyncing(true);
-        const response = await fetch('/api/sync-prices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assets: [{ type: formData.type, symbol: formData.symbol.toUpperCase() }] }) });
-        const result = await response.json();
-        const marketPrice = result.updatedAssets?.[0]?.current_price || 0;
-        const payload = { user_id: user.id, type: formData.type, symbol: formData.symbol.toUpperCase().trim(), quantity: Number(formData.quantity), avg_buy_price: Number(formData.avg_buy_price), current_price: marketPrice, last_updated: new Date().toISOString() };
-        if (editingId) await supabase.from('assets').update(payload).eq('id', editingId);
-        else await supabase.from('assets').upsert(payload, { onConflict: 'user_id,symbol' });
-        toast.success("Portfolio updated");
-        setIsModalOpen(false); setEditingId(null); setFormData({ type: 'Stock', symbol: '', quantity: '', avg_buy_price: '' }); fetchAssets();
+      setSyncing(true);
+      const response = await fetch('/api/sync-prices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assets: [{ type: formData.type, symbol: formData.symbol.toUpperCase() }] }) });
+      const result = await response.json();
+      const marketPrice = result.updatedAssets?.[0]?.current_price || 0;
+      const payload = { user_id: user.id, type: formData.type, symbol: formData.symbol.toUpperCase().trim(), quantity: Number(formData.quantity), avg_buy_price: Number(formData.avg_buy_price), current_price: marketPrice, last_updated: new Date().toISOString() };
+      if (editingId) await supabase.from('assets').update(payload).eq('id', editingId);
+      else await supabase.from('assets').upsert(payload, { onConflict: 'user_id,symbol' });
+      toast.success("Investment updated");
+      setIsModalOpen(false); setEditingId(null); setFormData({ type: 'Stock', symbol: '', quantity: '', avg_buy_price: '' }); fetchAssets();
     } catch (err: any) { toast.error(err.message); }
     finally { setSyncing(false); }
   };
@@ -101,8 +101,8 @@ export default function InvestmentsPage() {
       const response = await fetch('/api/sync-prices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assets: currentAssets }) });
       const result = await response.json();
       for (const update of result.updatedAssets) { await supabase.from('assets').update({ current_price: update.current_price, last_updated: new Date().toISOString() }).eq('id', update.id); }
-      toast.success("Market prices updated"); fetchAssets();
-    } catch (err: any) { toast.error("Sync Failed: " + err.message); }
+      toast.success("Prices updated successfully"); fetchAssets();
+    } catch (err: any) { toast.error("Update failed: " + err.message); }
     finally { setSyncing(false); }
   }
 
@@ -120,7 +120,7 @@ export default function InvestmentsPage() {
         if (!user) return;
         const payload = data.map(row => ({ user_id: user.id, type: String(row['Type']).trim(), symbol: String(row['Symbol']).trim().toUpperCase(), quantity: Number(row['Quantity'] || 0), avg_buy_price: Number(row['Avg Buy Price'] || 0), last_updated: new Date().toISOString() })).filter(a => a.symbol && a.quantity > 0);
         await supabase.from('assets').upsert(payload, { onConflict: 'user_id,symbol' });
-        toast.success("Assets imported");
+        toast.success("Investments imported");
         fetchAssets(); if (fileInputRef.current) fileInputRef.current.value = "";
       } catch (err: any) { toast.error(err.message); if (fileInputRef.current) fileInputRef.current.value = ""; }
     };
@@ -134,80 +134,214 @@ export default function InvestmentsPage() {
   const chartData = assets.map(asset => ({ name: asset.symbol, value: asset.quantity * asset.current_price }));
 
   return (
-    <div className="max-w-6xl mx-auto pb-20 text-black font-black">
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 md:mb-12">
-        <div><h1 className="text-3xl md:text-4xl font-black tracking-tighter">Investments</h1><p className="text-slate-700 text-sm mt-1 font-bold">Real-time wealth tracking.</p></div>
-        <div className="flex gap-2 w-full sm:w-auto"><button onClick={syncMarketPrices} disabled={syncing} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-white border-2 border-slate-100 rounded-2xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all uppercase tracking-widest"><RefreshCcw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> Sync</button><button onClick={() => { setEditingId(null); setFormData({type:'Stock', symbol:'', quantity:'', avg_buy_price:''}); setIsModalOpen(true); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 rounded-2xl text-xs font-black text-white hover:bg-blue-700 shadow-xl transition-all uppercase tracking-widest"><Plus className="w-4 h-4" /> Add Asset</button></div>
+    <div className="max-w-6xl mx-auto pb-20 text-black font-black uppercase">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl font-black tracking-tighter text-black uppercase">My Portfolio</h1>
+          <p className="text-slate-700 text-xs mt-1 font-bold tracking-tight uppercase">Investment tracking & market value.</p>
+        </div>
+        <div className="flex gap-3 w-full sm:w-auto">
+          <button
+            onClick={syncMarketPrices}
+            disabled={syncing}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white border-2 border-slate-100 rounded-xl text-[10px] font-black text-slate-700 hover:bg-slate-50 transition-all shadow-sm"
+          >
+            <RefreshCcw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> Refresh
+          </button>
+          <button
+            onClick={() => { setEditingId(null); setFormData({ type: 'Stock', symbol: '', quantity: '', avg_buy_price: '' }); setIsModalOpen(true); }}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 rounded-xl text-[10px] font-black text-white hover:bg-blue-700 shadow-xl transition-all"
+          >
+            <Plus className="w-4 h-4" /> Add Assets
+          </button>
+        </div>
       </header>
 
-      <AnimatePresence>
-        {isModalOpen && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="relative bg-white w-full max-w-md rounded-[2rem] md:rounded-[2.5rem] shadow-2xl p-6 md:p-10 overflow-hidden text-black font-black max-h-[90vh] overflow-y-auto text-black">
-              <div className="flex justify-between items-center mb-8"><h2 className="text-xl md:text-2xl font-black">{editingId ? 'Edit Asset' : 'New Position'}</h2><button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-black"><X size={20} /></button></div>
-              <form onSubmit={handleManualSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div><label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-2 block">Type</label><select className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-black" value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})}><option value="Stock">Stock</option><option value="Gold">Gold</option></select></div>
-                  <div><label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-2 block">Symbol</label><input type="text" placeholder="TLKM" required className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-black uppercase shadow-sm" value={formData.symbol} onChange={(e) => setFormData({...formData, symbol: e.target.value})} disabled={!!editingId} /></div>
-                </div>
-                <div><label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-2 block">Quantity</label><input type="number" step="any" required className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-black shadow-sm" value={formData.quantity} onChange={(e) => setFormData({...formData, quantity: e.target.value})} /></div>
-                <div><label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-2 block">Buy Price (Avg)</label><input type="text" required className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-black shadow-sm" value={formatDisplayAmount(formData.avg_buy_price)} onChange={handlePriceChange} /></div>
-                <button type="submit" disabled={syncing} className="w-full bg-black text-white font-black py-5 rounded-[1.5rem] shadow-lg hover:bg-slate-800 transition-all mt-4 uppercase tracking-widest text-[10px] flex items-center justify-center gap-2">{syncing && <RefreshCcw size={16} className="animate-spin" />} Save Changes</button>
-              </form>
-            </motion.div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <MetricCard
+          title="Market Value"
+          value={totalValue}
+          icon={<Coins className="text-amber-500" />}
+          color="text-black"
+          sub="Total Value Now"
+        />
+        <MetricCard
+          title="Total Profit"
+          value={totalProfit}
+          percentage={profitPercentage}
+          icon={<TrendingUp className={totalProfit >= 0 ? 'text-emerald-500' : 'text-red-500'} />}
+          color={totalProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}
+          sub="Overall Growth"
+        />
+        <div className="bg-white p-6 rounded-2xl border-2 border-slate-50 shadow-xl flex flex-col justify-center min-h-[140px] group hover:border-blue-100 transition-all">
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 text-center">Mix</p>
+          <div className="h-24">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData.length > 0 ? chartData : [{ name: 'Empty', value: 1 }]}
+                  innerRadius={25}
+                  outerRadius={40}
+                  paddingAngle={8}
+                  dataKey="value"
+                  stroke="none"
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                  {chartData.length === 0 && <Cell fill="#f1f5f9" />}
+                </Pie>
+                <RechartsTooltip />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>{selectedIds.length > 0 && (<motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }} className="fixed bottom-6 md:bottom-10 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-auto z-[110] bg-black text-white px-6 md:px-8 py-4 rounded-[1.5rem] md:rounded-[2rem] shadow-2xl flex flex-col sm:flex-row items-center gap-4 border border-white/10 backdrop-blur-xl"><div className="text-xs font-black uppercase tracking-widest text-slate-400"><span className="text-white">{selectedIds.length}</span> selected</div><div className="flex gap-6 items-center"><button onClick={handleDeleteBulk} className="flex items-center gap-2 text-red-400 hover:text-red-300 font-black text-xs uppercase tracking-widest transition-colors"><Trash2 size={16} /> Delete</button><button onClick={() => setSelectedIds([])} className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest">Cancel</button></div></motion.div>)}</AnimatePresence>
-
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-6 rounded-[2rem] md:rounded-[2.5rem] border border-slate-200 shadow-sm mb-10 flex flex-col lg:flex-row items-center justify-between gap-6 text-black"><div className="flex items-center gap-5 w-full"><div className="w-14 h-14 bg-amber-50 rounded-[1.5rem] flex items-center justify-center text-amber-600 shadow-inner"><Download size={24} /></div><div><h3 className="text-base font-black text-black">Portfolio Sync</h3><p className="text-xs text-slate-600 font-bold tracking-tight">Bulk update via Excel.</p></div></div><div className="flex gap-3 w-full lg:w-auto"><button onClick={() => { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Type: 'Gold', Symbol: 'Gold', Quantity: 10, 'Avg Buy Price': 1100000 }]), 'Assets'); XLSX.writeFile(wb, 'MyLedger_assets_template.xlsx'); }} className="flex-1 lg:flex-none px-6 py-3 bg-slate-50 text-slate-700 rounded-2xl text-[10px] font-black hover:bg-slate-100 border border-slate-200 uppercase tracking-widest transition-all">Template</button><button onClick={() => fileInputRef.current?.click()} className="flex-1 lg:flex-none px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black hover:bg-slate-800 transition-all shadow-lg uppercase tracking-widest">Upload Data</button><input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".xlsx, .xls" /></div></motion.div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-10 text-black">
-        <MetricCard title="Total Value" value={totalValue} icon={<Coins className="text-amber-500" />} color="text-black" />
-        <MetricCard title="Unrealized P/L" value={totalProfit} percentage={profitPercentage} icon={<TrendingUp className={totalProfit >= 0 ? 'text-emerald-500' : 'text-red-500'} />} color={totalProfit >= 0 ? 'text-emerald-600' : 'text-red-600'} />
-        <div className="bg-white p-8 rounded-[2rem] md:rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col justify-center min-h-[150px]"><p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 text-center">Asset Allocation</p><div className="h-24 text-black font-black"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={chartData.length > 0 ? chartData : [{ name: 'Empty', value: 1 }]} innerRadius={25} outerRadius={40} paddingAngle={8} dataKey="value" stroke="none">{chartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}{chartData.length === 0 && <Cell fill="#f1f5f9" />}</Pie><RechartsTooltip /></PieChart></ResponsiveContainer></div></div>
+        </div>
       </div>
 
-      <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden font-black text-black">
-        <div className="overflow-x-auto"><table className="w-full text-left text-sm text-black">
-            <thead><tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-black uppercase text-[10px] tracking-widest"><th className="px-6 py-6 w-10"><input type="checkbox" className="w-4 h-4 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500" checked={selectedIds.length === assets.length && assets.length > 0} onChange={toggleSelectAll} /></th><th className="px-6 py-6 text-black">Asset</th><th className="px-6 py-6 text-center text-black">Position</th><th className="px-6 py-6 text-right text-black">Market Price</th><th className="px-6 py-6 text-center text-black">Actions</th></tr></thead>
-            <tbody className="divide-y divide-slate-100 text-black">
-              {loading ? (<tr><td colSpan={6} className="text-center py-20 text-slate-400 font-black uppercase tracking-widest text-[10px] animate-pulse">Syncing...</td></tr>) : assets.length === 0 ? (<tr><td colSpan={6} className="text-center py-24 text-slate-400 font-bold uppercase tracking-widest text-[10px]">No assets.</td></tr>) : (
+      <div className="bg-white p-5 rounded-2xl border-2 border-slate-100 shadow-sm mb-8 flex flex-col lg:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4 w-full">
+          <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 shadow-inner">
+            <Download size={20} />
+          </div>
+          <div>
+            <h3 className="text-sm font-black text-black">Bulk Data Import</h3>
+            <p className="text-[10px] text-slate-600 font-bold tracking-tight">Sync your investments from Excel files.</p>
+          </div>
+        </div>
+        <div className="flex gap-2 w-full lg:w-auto">
+          <button onClick={() => { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Type: 'Stock', Symbol: 'BBCA', Quantity: 100, 'Avg Buy Price': 10000 }]), 'Assets'); XLSX.writeFile(wb, 'Portfolio_Template.xlsx'); }} className="flex-1 lg:flex-none px-5 py-2.5 bg-slate-50 text-slate-700 rounded-xl text-[10px] font-black hover:bg-slate-100 border border-slate-200 uppercase tracking-widest transition-all">Template</button>
+          <button onClick={() => fileInputRef.current?.click()} className="flex-1 lg:flex-none px-5 py-2.5 bg-slate-900 text-white rounded-xl text-[10px] font-black hover:bg-slate-800 transition-all shadow-lg uppercase tracking-widest">Upload</button>
+          <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".xlsx, .xls" />
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border-2 border-slate-100 overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-slate-50 border-b-2 border-slate-100 text-slate-500 font-black uppercase text-[10px] tracking-widest">
+                <th className="px-6 py-4 w-10">
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-blue-600" checked={selectedIds.length === assets.length && assets.length > 0} onChange={toggleSelectAll} />
+                </th>
+                <th className="px-6 py-4">Asset Details</th>
+                <th className="px-6 py-4 text-center">My Holdings</th>
+                <th className="px-6 py-4 text-right">Market Price</th>
+                <th className="px-6 py-4 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y-2 divide-slate-50">
+              {loading ? (
+                <tr><td colSpan={5} className="text-center py-20 text-slate-400 font-black uppercase tracking-widest text-[10px] animate-pulse">Syncing Portfolio...</td></tr>
+              ) : assets.length === 0 ? (
+                <tr><td colSpan={5} className="text-center py-24 text-slate-400 font-black uppercase tracking-widest text-[10px]">No investments yet.</td></tr>
+              ) : (
                 assets.map((asset) => {
                   const value = asset.quantity * asset.current_price;
                   const profit = value - (asset.quantity * asset.avg_buy_price);
                   const pPercent = (profit / (asset.quantity * asset.avg_buy_price)) * 100;
                   return (
-                    <tr key={asset.id} className={`hover:bg-slate-50/50 transition-colors group ${selectedIds.includes(asset.id) ? 'bg-blue-50/30' : ''}`}>
-                      <td className="px-6 py-7"><input type="checkbox" className="w-4 h-4 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500" checked={selectedIds.includes(asset.id)} onChange={() => toggleSelect(asset.id)} /></td>
-                      <td className="px-6 py-7 font-black text-black text-sm uppercase"><div className="flex items-center gap-4"><div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-[10px] ${asset.type === 'Gold' ? 'bg-amber-100 text-amber-700 shadow-inner' : 'bg-blue-100 text-blue-700 shadow-inner'}`}>{asset.symbol.substring(0, 2)}</div><div><p className="font-black text-black text-sm">{asset.symbol}</p><p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest font-black">{asset.type}</p></div></div></td>
-                      <td className="px-6 py-7 font-black text-slate-700 text-xs text-center">{asset.quantity}<p className="text-[9px] text-slate-400 uppercase tracking-widest font-black">Avg @ {new Intl.NumberFormat('id-ID').format(asset.avg_buy_price)}</p></td>
-                      <td className="px-6 py-7 text-right"><p className="font-black text-black text-sm tracking-tight">{new Intl.NumberFormat('id-ID').format(asset.current_price)}</p><div className={`inline-flex items-center gap-1 text-[9px] font-black ${profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{profit >= 0 ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}{pPercent.toFixed(1)}%</div></td>
-                      <td className="px-6 py-7"><div className="flex justify-center gap-1"><button onClick={() => openEditModal(asset)} className="p-2.5 text-slate-400 hover:text-blue-600 transition-all sm:opacity-0 group-hover:opacity-100"><Edit3 size={16} /></button><button onClick={() => handleDeleteSingle(asset.id)} className="p-2.5 text-slate-400 hover:text-red-600 transition-all sm:opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button></div></td>
+
+                    <tr key={asset.id} className={`hover:bg-slate-50/50 transition-all group ${selectedIds.includes(asset.id) ? 'bg-blue-50/30' : ''}`}>
+                      <td className="px-6 py-4 text-center">
+                        <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-blue-600" checked={selectedIds.includes(asset.id)} onChange={() => toggleSelect(asset.id)} />
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-4">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-[10px] shadow-sm border-2 ${asset.type === 'Gold' ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
+                            {asset.symbol.substring(0, 2)}
+                          </div>
+                          <div>
+                            <p className="font-black text-black text-sm tracking-tight">{asset.symbol}</p>
+                            <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">{asset.type}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <p className="font-black text-slate-700 text-sm">{new Intl.NumberFormat('id-ID').format(asset.quantity)} Units</p>
+                        <p className="text-[8px] text-slate-400 uppercase tracking-widest font-black">Buy: {new Intl.NumberFormat('id-ID').format(asset.avg_buy_price)}</p>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <p className="font-black text-black text-sm tracking-tight">{new Intl.NumberFormat('id-ID').format(asset.current_price)}</p>
+                        <div className={`inline-flex items-center gap-1 text-[9px] font-black ${profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                          {profit >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                          {pPercent.toFixed(1)}%
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex justify-center gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-all">
+                          <button onClick={() => openEditModal(asset)} className="p-2 text-slate-400 hover:text-blue-600 transition-all border border-transparent hover:border-blue-50 rounded-lg"><Edit3 size={16} /></button>
+                          <button onClick={() => handleDeleteSingle(asset.id)} className="p-2 text-slate-400 hover:text-red-600 transition-all border border-transparent hover:border-red-50 rounded-lg"><Trash2 size={16} /></button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })
               )}
             </tbody>
-          </table></div>
+          </table>
+        </div>
       </div>
+
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl p-8 overflow-hidden text-black font-black max-h-[95vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-xl font-black uppercase tracking-tight">{editingId ? 'Update Assets' : 'Add Assets'}</h2>
+                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={18} /></button>
+              </div>
+              <form onSubmit={handleManualSubmit} className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-2 block">Type</label>
+                    <select className="w-full bg-white border-2 border-slate-100 rounded-xl px-5 py-3.5 text-xs font-black uppercase shadow-sm outline-none focus:border-blue-500" value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })}>
+                      <option value="Stock">Stock / Saham</option>
+                      <option value="Gold">Gold / Logam Mulia</option>
+                      <option value="Crypto">Crypto</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-2 block">Ticker</label>
+                    <input type="text" placeholder="e.g. BBCA" required className="w-full bg-white border-2 border-slate-100 rounded-xl px-5 py-3.5 text-sm font-black uppercase shadow-sm outline-none focus:border-blue-500" value={formData.symbol} onChange={(e) => setFormData({ ...formData, symbol: e.target.value })} disabled={!!editingId} />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-2 block">Quantity</label>
+                  <input type="number" step="any" required placeholder="0" className="w-full bg-white border-2 border-slate-100 rounded-xl px-5 py-3.5 text-sm font-black shadow-sm outline-none focus:border-blue-500" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-2 block">Avg Buy Price</label>
+                  <input type="text" placeholder="0" required className="w-full bg-white border-2 border-slate-100 rounded-xl px-5 py-3.5 text-sm font-black shadow-sm outline-none focus:border-blue-500" value={formatDisplayAmount(formData.avg_buy_price)} onChange={handlePriceChange} />
+                </div>
+                <button type="submit" disabled={syncing} className="w-full bg-black text-white font-black py-4 rounded-xl shadow-xl hover:bg-slate-800 transition-all mt-4 uppercase tracking-widest text-[10px] flex items-center justify-center gap-2">
+                  {syncing && <RefreshCcw size={14} className="animate-spin" />} Save Changes
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function MetricCard({ title, value, percentage, icon, color }: any) {
+function MetricCard({ title, value, percentage, icon, color, sub }: any) {
   return (
-    <motion.div whileHover={{ y: -5 }} className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-slate-200 shadow-sm relative overflow-hidden group">
-      <div className="flex items-center justify-between mb-6 text-black">
-        <div className="p-3 bg-slate-50 rounded-2xl group-hover:scale-110 transition-transform">{icon}</div>
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 font-black">{title}</p>
+    <motion.div whileHover={{ y: -5 }} className="bg-white p-6 rounded-2xl border-2 border-slate-50 shadow-xl relative overflow-hidden group">
+      <div className="flex items-center justify-between mb-8">
+        <div className="p-3 bg-slate-50 rounded-xl group-hover:scale-110 group-hover:bg-slate-900 group-hover:text-white transition-all duration-500 shadow-sm">{icon}</div>
+        <div className="text-right">
+          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">{title}</p>
+          <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">{sub}</p>
+        </div>
       </div>
-      <div className="flex items-end gap-2 text-black">
-        <p className={`text-2xl md:text-3xl font-black ${color}`}>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value)}</p>
+      <div className="flex items-end gap-2 translate-y-1 group-hover:translate-y-0 transition-all duration-500">
+        <p className={`text-2xl md:text-3xl font-black ${color} tracking-tighter`}>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value)}</p>
         {percentage !== undefined && (
-            <span className={`text-[10px] font-black mb-1.5 ${percentage >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>({percentage.toFixed(1)}%)</span>
+          <span className={`text-[10px] font-black mb-1 px-1.5 py-0.5 rounded-full ${percentage >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+            {percentage.toFixed(1)}%
+          </span>
         )}
       </div>
     </motion.div>
