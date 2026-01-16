@@ -16,7 +16,8 @@ import {
   Receipt,
   Calendar,
   Bell,
-  X as CloseIcon
+  X as CloseIcon,
+  Zap
 } from 'lucide-react';
 import {
   AreaChart,
@@ -315,7 +316,7 @@ export default function Dashboard() {
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 900 }} dy={10} />
                       <YAxis hide />
                       <Tooltip
-                        formatter={(value: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(value)}
+                        formatter={(value: any) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(Number(value || 0))}
                         contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.25)', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px' }}
                       />
                       <Legend
