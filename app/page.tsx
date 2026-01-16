@@ -320,7 +320,7 @@ export default function Dashboard() {
                         contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.25)', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px' }}
                       />
                       <Legend
-                        onClick={(e) => toggleBank(e.value)}
+                        onClick={(e) => e && e.value && toggleBank(e.value)}
                         wrapperStyle={{ paddingTop: '20px', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase' }}
                       />
                       {wallets.map((w, i) => (
