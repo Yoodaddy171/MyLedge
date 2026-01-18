@@ -55,6 +55,17 @@ export default function InvestmentsPage() {
     setHistory(data || []);
   }
 
+  const handleDeleteSingle = async (id: number) => {
+    if (!confirm("Delete this investment?")) return;
+    const { error } = await supabase.from('assets').delete().eq('id', id);
+    if (!error) {
+      toast.success("Investment removed");
+      fetchAssets();
+    } else {
+      toast.error(error.message);
+    }
+  };
+
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const { data: { user } } = await supabase.auth.getUser();

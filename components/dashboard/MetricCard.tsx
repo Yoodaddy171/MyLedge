@@ -17,7 +17,7 @@ export default function MetricCard({ title, value, icon, color, sub }: MetricCar
       <div className="flex items-center justify-between mb-2 md:mb-3">
         <div className="flex items-center gap-2 md:gap-3">
           <div className="p-1.5 md:p-2 bg-slate-50 rounded-lg group-hover:bg-blue-50 transition-colors duration-300">
-            {React.cloneElement(icon as React.ReactElement, { size: 16 })}
+            {icon}
           </div>
           <p className="text-[10px] md:text-xs font-medium text-slate-500">{title}</p>
         </div>
