@@ -3,23 +3,31 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { formatDisplayAmount } from '@/lib/utils';
-import { Plus, Download, Search, Filter, Trash2, X, Edit3, TrendingUp, TrendingDown, Landmark } from 'lucide-react';
+import { Plus, Download, Search, Filter, Trash2, X, Edit3, TrendingUp, TrendingDown, Landmark, ChevronDown, ChevronUp, Activity, Briefcase, Target, PieChart } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 import Pagination from '@/components/Pagination';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [totalItems, setTotalItems] = useState(0); 
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  
+  // Support Data
   const [masterItems, setMasterItems] = useState<any[]>([]);
   const [wallets, setWallets] = useState<any[]>([]);
-
   const [projects, setProjects] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [activeDebts, setActiveDebts] = useState<any[]>([]);
+  const [assets, setAssets] = useState<any[]>([]);
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [goals, setGoals] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -31,208 +39,155 @@ export default function TransactionsPage() {
     amount: '',
     description: '',
     notes: '',
-    debt_id: ''
+    debt_id: '',
+    asset_id: '',
+    submission_id: '',
+    goal_id: ''
   });
-  const [activeDebts, setActiveDebts] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
 
-  // Filter States
   const [filterWallet, setFilterWallet] = useState<string>('');
   const [filterCategory, setFilterCategory] = useState<string>('');
   const [filterDateStart, setFilterDateStart] = useState<string>('');
   const [filterDateEnd, setFilterDateEnd] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
-  // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   useBodyScrollLock(isModalOpen);
 
-  useEffect(() => {
-    fetchTransactions();
-    fetchFormSupportData();
-  }, []);
-
-  // Refetch when filters change and reset pagination
-  useEffect(() => {
-    setCurrentPage(1);
-    fetchTransactions();
-  }, [filterWallet, filterCategory, filterDateStart, filterDateEnd, searchQuery]);
+  useEffect(() => { fetchFormSupportData(); }, []);
+  useEffect(() => { fetchTransactions(); }, [filterWallet, filterCategory, filterDateStart, filterDateEnd, searchQuery, currentPage, itemsPerPage]);
 
   async function fetchFormSupportData() {
     try {
-      const { data: items, error: itemsError } = await supabase
-        .from('transaction_items')
-        .select('id, name, code, category_id, categories(id, name, type)');
-
-      const { data: wallets, error: walletsError } = await supabase
-        .from('wallets')
-        .select('id, name')
-        .eq('is_active', true);
-
-      const { data: debts, error: debtsError } = await supabase
-        .from('debts')
-        .select('id, name, remaining_amount')
-        .eq('is_paid', false)
-        .gt('remaining_amount', 0);
-
-      const { data: cats, error: catsError } = await supabase
-        .from('categories')
-        .select('id, name');
-
-      const { data: projs, error: projsError } = await supabase
-        .from('projects')
-        .select('id, name')
-        .neq('status', 'cancelled');
-
-      if (itemsError) console.error('Items error:', itemsError);
-      if (walletsError) console.error('Wallets error:', walletsError);
-      if (debtsError) console.error('Debts error:', debtsError);
-      if (catsError) console.error('Categories error:', catsError);
-      if (projsError) console.error('Projects error:', projsError);
-
-      setMasterItems(items || []);
-      setWallets(wallets || []);
-      setActiveDebts(debts || []);
-      setCategories(cats || []);
-      setProjects(projs || []);
-    } catch (error) {
-      console.error('Error fetching form support data:', error);
-    }
+      const [items, w, debts, cats, projs, asts, subs, g] = await Promise.all([
+        supabase.from('transaction_items').select('id, name, code, category_id, categories(id, name, type)'),
+        supabase.from('wallets').select('id, name').eq('is_active', true),
+        supabase.from('debts').select('id, name, remaining_amount').eq('is_paid', false).gt('remaining_amount', 0),
+        supabase.from('categories').select('id, name'),
+        supabase.from('projects').select('id, name').neq('status', 'cancelled'),
+        supabase.from('assets').select('id, name, symbol'),
+        supabase.from('submissions').select('id, entity, doc_number'),
+        supabase.from('financial_goals').select('id, name').eq('status', 'active')
+      ]);
+      
+      setMasterItems(items.data || []);
+      setWallets(w.data || []);
+      setActiveDebts(debts.data || []);
+      setCategories(cats.data || []);
+      setProjects(projs.data || []);
+      setAssets(asts.data || []);
+      setSubmissions(subs.data || []);
+      setGoals(g.data || []);
+    } catch (error) { console.error('Error fetching support data:', error); }
   }
 
-  // Computed: Filtered Transactions
-  // Most filtering now done server-side, only category filter remains client-side
-  // (because category is in nested relation transaction_items.categories)
-  const filteredTransactions = transactions.filter(trx => {
-    const matchesCategory = !filterCategory || trx.item?.categories?.id?.toString() === filterCategory;
-    return matchesCategory;
-  });
-
-  // Computed: Filtered Summary
-  const filteredSummary = filteredTransactions.reduce((acc, curr) => {
-    if (curr.type === 'income') acc.income += Number(curr.amount);
-    else if (curr.type === 'expense') acc.expense += Number(curr.amount);
-    // Transfers are neutral in summary usually, or we can track them separately
-    return acc;
-  }, { income: 0, expense: 0 });
-
-  const netBalance = filteredSummary.income - filteredSummary.expense;
-
-  // Pagination calculations
-  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
-
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawVal = e.target.value.replace(/\D/g, "");
-    setFormData({ ...formData, amount: rawVal });
-  };
-
-  const resetFilters = () => {
-    setFilterWallet('');
-    setFilterCategory('');
-    setFilterDateStart('');
-    setFilterDateEnd('');
-    setSearchQuery('');
-    setCurrentPage(1);
+  const buildQuery = (baseQuery: any, categoryItemIds: number[] | null) => {
+    let q = baseQuery;
+    if (categoryItemIds !== null) q = q.in('item_id', categoryItemIds);
+    if (filterWallet) q = q.eq('wallet_id', filterWallet);
+    if (filterDateStart) q = q.gte('date', filterDateStart);
+    if (filterDateEnd) q = q.lte('date', filterDateEnd);
+    if (searchQuery) q = q.or(`description.ilike.%${searchQuery}%`);
+    return q;
   };
 
   async function fetchTransactions() {
     try {
       setLoading(true);
+      let categoryItemIds: number[] | null = null;
+      if (filterCategory) {
+         const { data: items } = await supabase.from('transaction_items').select('id').eq('category_id', filterCategory);
+         if (!items || items.length === 0) { setTransactions([]); setTotalItems(0); setLoading(false); return; }
+         categoryItemIds = items.map(i => i.id);
+      }
 
-      // Build query with server-side filtering
-      let query = supabase
-        .from('transactions')
+      let query = supabase.from('transactions')
         .select(`
-          *,
-          wallet:wallets!wallet_id(name),
-          to_wallet:wallets!to_wallet_id(name),
-          project:projects(name),
-          item:transaction_items(
-            name,
-            code,
-            categories (
-                id,
-                name
-            )
-          )
-        `);
+          *, 
+          wallet:wallets!fk_transactions_wallet(name), 
+          to_wallet:wallets!fk_transactions_to_wallet(name), 
+          project:projects!fk_transactions_project(name), 
+          asset:assets(name, symbol),
+          submission:submissions(entity),
+          goal:financial_goals(name),
+          item:transaction_items!fk_transactions_item(name, code, categories!fk_transaction_items_category(id, name))
+        `, { count: 'exact' });
+      
+      query = buildQuery(query, categoryItemIds);
+      const from = (currentPage - 1) * itemsPerPage;
+      const to = from + itemsPerPage - 1;
+      const { data, error, count } = await query.order('date', { ascending: false }).order('created_at', { ascending: false }).range(from, to);
 
-      // Apply filters on server
-      if (filterWallet) {
-        query = query.eq('wallet_id', filterWallet);
-      }
-
-      if (filterDateStart) {
-        query = query.gte('date', filterDateStart);
-      }
-
-      if (filterDateEnd) {
-        query = query.lte('date', filterDateEnd);
-      }
-
-      // Search query (using ilike for case-insensitive search)
-      if (searchQuery) {
-        query = query.or(`description.ilike.%${searchQuery}%`);
-      }
-
-      // Execute query with ordering and limit
-      const { data, error } = await query
-        .order('date', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(500); // Reduced from 1000 since we filter server-side
-
-      if (error) {
-        console.error('Supabase error:', error);
-        toast.error('Failed to load transactions: ' + (error.message || 'Unknown error'));
-        throw error;
-      }
+      if (error) throw error;
       setTransactions(data || []);
-    } catch (error: any) {
-      console.error('Error fetching transactions:', error);
-      toast.error('Failed to load transactions');
-    } finally {
-      setLoading(false);
-    }
+      setTotalItems(count || 0);
+    } catch (error: any) { logger.handleApiError(error, 'Failed to load transactions', { component: 'TransactionsPage' }); } 
+    finally { setLoading(false); }
   }
 
-  const handleDeleteSingle = async (id: number) => {
-    if (!confirm("Delete this entry?")) return;
-    const { error } = await supabase.from('transactions').delete().eq('id', id);
-    if (!error) {
-      toast.success("Entry removed");
+  const filteredSummary = transactions.reduce((acc, curr) => {
+    if (curr.type === 'income') acc.income += Number(curr.amount);
+    else if (curr.type === 'expense') acc.expense += Number(curr.amount);
+    return acc;
+  }, { income: 0, expense: 0 });
+  const netBalance = filteredSummary.income - filteredSummary.expense;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  const handleManualSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.amount || Number(formData.amount) <= 0) { toast.error("Please enter a valid amount."); return; }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const payload: any = {
+      user_id: user.id,
+      date: formData.date,
+      type: formData.type,
+      amount: Number(formData.amount),
+      description: formData.description,
+      notes: formData.notes,
+      wallet_id: formData.wallet_id || null,
+      to_wallet_id: formData.type === 'transfer' ? (formData.to_wallet_id || null) : null,
+      item_id: formData.item_id || null,
+      project_id: formData.project_id || null,
+      debt_id: formData.type === 'expense' ? (formData.debt_id || null) : null,
+      asset_id: formData.asset_id || null,
+      submission_id: formData.submission_id || null,
+      goal_id: formData.goal_id || null,
+    };
+
+    const { error } = editingId ? await supabase.from('transactions').update(payload).eq('id', editingId) : await supabase.from('transactions').insert(payload);
+    
+    if (error) toast.error(error.message);
+    else {
+      toast.success(editingId ? "Entry updated" : "Entry added");
+      setIsModalOpen(false); 
+      setEditingId(null);
+      resetForm();
       fetchTransactions();
-    } else {
-      toast.error(error.message);
     }
   };
 
-  const handleDeleteBulk = async () => {
-    if (!confirm(`Remove ${selectedIds.length} selected entries?`)) return;
-    const { error } = await supabase.from('transactions').delete().in('id', selectedIds);
-    if (!error) {
-      toast.success(`${selectedIds.length} entries removed`);
-      setSelectedIds([]);
-      fetchTransactions();
-    } else {
-      toast.error(error.message);
-    }
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedIds.length === filteredTransactions.length) setSelectedIds([]);
-    else setSelectedIds(filteredTransactions.map(t => t.id));
-  };
-
-  const toggleSelect = (id: number) => {
-    if (selectedIds.includes(id)) setSelectedIds(selectedIds.filter(sid => sid !== id));
-    else setSelectedIds([...selectedIds, id]);
+  const resetForm = () => {
+    setFormData({ 
+        date: new Date().toISOString().split('T')[0], 
+        type: 'expense', 
+        item_id: '', 
+        wallet_id: '', 
+        to_wallet_id: '', 
+        project_id: '', 
+        amount: '', 
+        description: '', 
+        notes: '', 
+        debt_id: '',
+        asset_id: '',
+        submission_id: '',
+        goal_id: ''
+    });
   };
 
   const openEditModal = (trx: any) => {
@@ -247,553 +202,186 @@ export default function TransactionsPage() {
       amount: trx.amount.toString(),
       description: trx.description || '',
       notes: trx.notes || '',
-      debt_id: trx.debt_id || ''
+      debt_id: trx.debt_id || '',
+      asset_id: trx.asset_id || '',
+      submission_id: trx.submission_id || '',
+      goal_id: trx.goal_id || ''
     });
     setIsModalOpen(true);
   };
 
-  const handleManualSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.amount || Number(formData.amount) <= 0) {
-      toast.error("Please enter a valid amount.");
-      return;
-    }
-    if (formData.type === 'transfer' && !formData.to_wallet_id) {
-      toast.error("Please select a destination account for transfer.");
-      return;
-    }
-
-    // VALIDATION: Prevent self-transfer
-    if (formData.type === 'transfer' && formData.wallet_id === formData.to_wallet_id) {
-      toast.error("Cannot transfer to the same account. Please select different source and destination.");
-      return;
-    }
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const payload: any = {
-      user_id: user.id,
-      date: formData.date,
-      type: formData.type,
-      amount: Number(formData.amount),
-      description: formData.description,
-      notes: formData.notes,
-      wallet_id: formData.wallet_id || null,
-      to_wallet_id: formData.type === 'transfer' ? (formData.to_wallet_id || null) : null,
-      item_id: formData.item_id || null, // Optional for transfers
-      project_id: formData.project_id || null,
-      debt_id: formData.type === 'expense' ? (formData.debt_id || null) : null,
-    };
-
-    let error;
-    if (editingId) {
-      const { error: err } = await supabase.from('transactions').update(payload).eq('id', editingId);
-      error = err;
-    } else {
-      const { error: err } = await supabase.from('transactions').insert(payload);
-      error = err;
-    }
-
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success(editingId ? "Entry updated" : "New entry added");
-      setIsModalOpen(false);
-      setEditingId(null);
-      setFormData({ 
-        date: new Date().toISOString().split('T')[0], 
-        type: 'expense',
-        item_id: '', 
-        wallet_id: '', 
-        to_wallet_id: '',
-        project_id: '',
-        amount: '', 
-        description: '', 
-        notes: '',
-        debt_id: '' 
-      });
-      fetchTransactions();
-      fetchFormSupportData();
-    }
+  const handleDeleteSingle = async (id: number) => {
+    if (!confirm("Delete this entry?")) return;
+    const { error } = await supabase.from('transactions').delete().eq('id', id);
+    if (!error) { toast.success("Entry removed"); fetchTransactions(); } 
+    else { toast.error(error.message); }
   };
 
-  const handleResetData = async () => {
-    if (!confirm("⚠️ CAUTION!\n\nThis will permanently delete ALL entries. Proceed?")) return;
-    setLoading(true);
-    try {
-      const { error } = await supabase.from('transactions').delete().gt('id', 0);
-      if (error) throw error;
-      toast.success("History cleared.");
-      fetchTransactions();
-    } catch (err: any) { toast.error(err.message); }
-    finally { setLoading(false); }
+  const handleDeleteBulk = async () => {
+    if (!confirm(`Delete ${selectedIds.length} entries?`)) return;
+    const { error } = await supabase.from('transactions').delete().in('id', selectedIds);
+    if (!error) { toast.success("Deleted"); setSelectedIds([]); fetchTransactions(); } else { toast.error(error.message); }
   };
 
-  const handleImportClick = () => fileInputRef.current?.click();
-
-  const downloadTemplate = () => {
-    const wb = XLSX.utils.book_new();
-
-    // Get sample item codes from master items for the template
-    const incomeItem = masterItems.find(i => (i.categories as any)?.type === 'income');
-    const expenseItem = masterItems.find(i => (i.categories as any)?.type === 'expense');
-
-    const trxData = [
-      {
-        'Date': new Date().toISOString().split('T')[0],
-        'Item Code': incomeItem?.code || 'T1000',
-        'Bank/Wallet': wallets[0]?.name || 'Main Checking',
-        'Amount': 15000000,
-        'Description': 'Monthly Salary',
-        'Notes': 'Income example - use code from transaction items'
-      },
-      {
-        'Date': new Date().toISOString().split('T')[0],
-        'Item Code': expenseItem?.code || 'T1001',
-        'Bank/Wallet': wallets[0]?.name || 'Cash',
-        'Amount': -50000,
-        'Description': 'Lunch',
-        'Notes': 'Expense example - negative amount or use item code from expense category'
-      }
-    ];
-
-    // Add instruction sheet
-    const instructions = [
-      { Field: 'Date', Format: 'YYYY-MM-DD', Required: 'Yes', Example: '2025-01-17', Notes: 'Transaction date' },
-      { Field: 'Item Code', Format: 'Text', Required: 'Yes', Example: 'T1000', Notes: 'Code from transaction items - determines income/expense type' },
-      { Field: 'Bank/Wallet', Format: 'Text', Required: 'Yes', Example: 'Main Checking', Notes: 'Wallet name (will be created if not exists)' },
-      { Field: 'Amount', Format: 'Number', Required: 'Yes', Example: '15000000 or -50000', Notes: 'Positive for income, negative for expense, or use item code type' },
-      { Field: 'Description', Format: 'Text', Required: 'No', Example: 'Monthly salary', Notes: 'Transaction description' },
-      { Field: 'Notes', Format: 'Text', Required: 'No', Example: 'Additional info', Notes: 'Optional notes' }
-    ];
-
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(trxData), 'Transactions');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(instructions), 'Instructions');
-    XLSX.writeFile(wb, `MyLedger_Import_Template.xlsx`);
-    toast.success('Template downloaded! Check the Instructions sheet for details.');
+  const resetFilters = () => {
+    setFilterWallet('');
+    setFilterCategory('');
+    setFilterDateStart('');
+    setFilterDateEnd('');
+    setSearchQuery('');
+    setCurrentPage(1);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-      try {
-        const arrayBuffer = evt.target?.result;
-        if (!arrayBuffer) return;
-        const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
-        const wsname = wb.SheetNames.find(n => n.includes('MOVEMENT')) || wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const data: any[] = XLSX.utils.sheet_to_json(ws, { range: ws['A6'] ? 5 : 0 });
-        if (data.length === 0) { toast.error("No data found in Excel."); return; }
+  const toggleSelectAll = () => {
+    if (selectedIds.length === transactions.length) setSelectedIds([]);
+    else setSelectedIds(transactions.map(t => t.id));
+  };
 
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+  const toggleSelect = (id: number) => {
+    if (selectedIds.includes(id)) setSelectedIds(selectedIds.filter(sid => sid !== id));
+    else setSelectedIds([...selectedIds, id]);
+  };
 
-        const uniqueWallets = Array.from(new Set(data.map(r => r['Asal Dana'] || r['Bank/Wallet'] || r['Wallet']))).filter(Boolean);
-        const { data: dbWallets } = await supabase.from('wallets').select('id, name');
-        const walletMap = new Map(dbWallets?.map(w => [w.name, w.id]));
-        for (const wName of uniqueWallets as string[]) {
-          if (!walletMap.has(wName)) {
-            // Schema V2: Add required fields for new wallets
-            const { data: newW } = await supabase.from('wallets').insert({
-              user_id: user.id,
-              name: wName,
-              type: 'bank', // Default type
-              initial_balance: 0,
-              current_balance: 0,
-              currency: 'IDR',
-              is_active: true,
-              is_excluded_from_total: false
-            }).select().single();
-            if (newW) walletMap.set(wName, newW.id);
-          }
-        }
-
-        const { data: items } = await supabase.from('transaction_items').select('id, code, categories(type)');
-        const itemMap = new Map(items?.map(i => [i.code, i.id]));
-        const itemTypeMap = new Map(items?.map(i => [i.code, (i.categories as any)?.type]));
-
-        const payload = data.map(row => {
-          let dateVal = row['Tanggal'] || row['Date'];
-          if (dateVal instanceof Date) dateVal = dateVal.toISOString().split('T')[0];
-          const itemCode = String(row['Kode Transaksi'] || row['Item Code'] || '').trim();
-          const nominalIn = Number(row['Nominal IN'] || 0);
-          const nominalOut = Number(row['Nominal OUT'] || 0);
-          const templateAmount = Number(row['Amount'] || 0);
-          let type = 'expense', amount = 0;
-          if (nominalIn > 0) { type = 'income'; amount = nominalIn; }
-          else if (nominalOut > 0) { type = 'expense'; amount = nominalOut; }
-          else if (templateAmount !== 0) {
-            amount = Math.abs(templateAmount);
-            type = itemTypeMap.get(itemCode) || (templateAmount > 0 ? 'income' : 'expense');
-          }
-          return {
-            user_id: user.id, date: dateVal, amount: amount, type: type,
-            description: String(row['Keterangan'] || row['Description'] || row['Nama Transaksi'] || '').trim(),
-            item_id: itemMap.get(itemCode) || null,
-            wallet_id: walletMap.get(row['Asal Dana'] || row['Bank/Wallet'] || row['Wallet']) || null
-          };
-        }).filter(p => p.date && p.amount > 0);
-
-        const { error } = await supabase.from('transactions').insert(payload);
-        if (error) throw error;
-        toast.success(`Success: ${payload.length} items imported.`);
-        fetchTransactions();
-        if (fileInputRef.current) fileInputRef.current.value = "";
-      } catch (err: any) { toast.error("Import Error: " + err.message); if (fileInputRef.current) fileInputRef.current.value = ""; }
-    };
-    reader.readAsArrayBuffer(file);
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawVal = e.target.value.replace(/\D/g, "");
+    setFormData({ ...formData, amount: rawVal });
   };
 
   return (
-    <div className="max-w-7xl mx-auto pb-12 text-black font-black uppercase">
+    <div className="max-w-7xl mx-auto pb-12">
       {/* Header Section */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-black tracking-tighter text-black">My Transactions</h1>
-          <p className="text-slate-700 text-xs mt-1 font-bold tracking-tight">Daily cashflow history & logs.</p>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">Transactions</h1>
+          <p className="text-slate-500 text-xs md:text-sm mt-0.5">Manage your financial records</p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <button onClick={handleResetData} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-[9px] font-black text-red-600 hover:bg-red-100 transition-colors shadow-sm">
-            <Trash2 size={14} /> Wipe History
-          </button>
-          <button onClick={() => { 
-            setEditingId(null); 
-            setFormData({ 
-              date: new Date().toISOString().split('T')[0], 
-              type: 'expense',
-              item_id: '', 
-              wallet_id: '', 
-              to_wallet_id: '',
-              project_id: '',
-              amount: '', 
-              description: '', 
-              notes: '',
-              debt_id: '' 
-            });  
-            setIsModalOpen(true); 
-          }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 rounded-xl text-[10px] font-black text-white hover:bg-blue-700 shadow-xl transition-all uppercase tracking-widest">
-            <Plus size={14} /> New Entry
+        <div className="flex gap-3 w-full sm:w-auto">
+          <button onClick={() => { setEditingId(null); resetForm(); setIsModalOpen(true); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 shadow-lg transition-all active:scale-95">
+            <Plus size={16} /> New Entry
           </button>
         </div>
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white p-6 rounded-[1.5rem] border-2 border-slate-100 shadow-sm mb-8 flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <h3 className="text-base font-black text-black tracking-tight flex items-center gap-3">
-            <Filter size={18} className="text-blue-600" /> Advanced Filters
-          </h3>
-          <button onClick={resetFilters} className="text-[9px] font-black text-slate-400 hover:text-red-500 transition-colors tracking-widest uppercase">Reset</button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="lg:col-span-2 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input
-              type="text"
-              placeholder="Search items or notes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-12 py-3 text-[11px] font-bold text-black focus:border-blue-500 outline-none transition-all shadow-sm"
-            />
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm mb-6 overflow-hidden">
+        <div className="p-4 md:p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/50 transition-colors" onClick={() => setIsFiltersOpen(!isFiltersOpen)}>
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2"><Filter size={16} className="text-blue-600" /> Filters</h3>
+            {(filterWallet || filterCategory || filterDateStart || filterDateEnd || searchQuery) && <span className="w-2 h-2 rounded-full bg-blue-500" />}
           </div>
-          <div>
-            <select
-              value={filterWallet}
-              onChange={(e) => setFilterWallet(e.target.value)}
-              className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 text-[9px] font-black uppercase shadow-sm outline-none focus:border-blue-500"
-            >
-              <option value="">All Accounts</option>
-              {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 text-[9px] font-black uppercase shadow-sm outline-none focus:border-blue-500"
-            >
-              <option value="">All Categories</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              value={filterDateStart}
-              onChange={(e) => setFilterDateStart(e.target.value)}
-              className="flex-1 bg-slate-50 border-2 border-slate-100 rounded-xl px-3 py-3 text-[9px] font-black uppercase shadow-sm outline-none focus:border-blue-500"
-            />
-            <span className="text-slate-300 font-black">-</span>
-            <input
-              type="date"
-              value={filterDateEnd}
-              onChange={(e) => setFilterDateEnd(e.target.value)}
-              className="flex-1 bg-slate-50 border-2 border-slate-100 rounded-xl px-3 py-3 text-[9px] font-black uppercase shadow-sm outline-none focus:border-blue-500"
-            />
+          <div className="flex items-center gap-4">
+            <button onClick={(e) => { e.stopPropagation(); resetFilters(); }} className="text-[10px] font-bold text-slate-400 hover:text-red-600 transition-colors uppercase tracking-widest">Reset</button>
+            {isFiltersOpen ? <ChevronUp size={16} className="text-slate-900" /> : <ChevronDown size={16} className="text-slate-900" />}
           </div>
         </div>
-      </div>
-
-      {/* Filtered Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <SummaryCard
-          title="Inbound"
-          value={filteredSummary.income}
-          icon={<TrendingUp className="text-emerald-600" size={18} />}
-          color="text-emerald-600"
-          sub="Filtered Income"
-        />
-        <SummaryCard
-          title="Outbound"
-          value={filteredSummary.expense}
-          icon={<TrendingDown className="text-red-600" size={18} />}
-          color="text-red-700"
-          sub="Filtered Expenses"
-        />
-        <SummaryCard
-          title="Net Movement"
-          value={netBalance}
-          icon={<Filter className="text-blue-600" size={18} />}
-          color={netBalance >= 0 ? "text-blue-700" : "text-red-700"}
-          sub="Balance"
-        />
-      </div>
-
-      <AnimatePresence>
-        {isModalOpen && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 overflow-hidden pointer-events-none">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setIsModalOpen(false); setEditingId(null); }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm pointer-events-auto" />
-            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} onClick={(e) => e.stopPropagation()} className="relative bg-white w-full max-w-md rounded-[3rem] shadow-2xl text-black font-black max-h-[90vh] overflow-y-auto overscroll-contain p-10 pointer-events-auto" style={{WebkitOverflowScrolling: 'touch'}}>
-              <div className="flex justify-between items-center pb-6 mb-6 border-b border-slate-100">
-                <h2 className="text-2xl font-black uppercase tracking-tight">{editingId ? 'Edit Entry' : 'New Transaction'}</h2>
-                <button onClick={() => { setIsModalOpen(false); setEditingId(null); }} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20} /></button>
+        
+        <AnimatePresence>
+          {isFiltersOpen && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+              <div className="p-4 md:p-5 pt-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 border-t border-slate-50 mt-2">
+                <div className="lg:col-span-2 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                  <input type="text" placeholder="Search description..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all shadow-sm" />
+                </div>
+                <select value={filterWallet} onChange={(e) => setFilterWallet(e.target.value)} className="bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm">
+                  <option value="">All Accounts</option>
+                  {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                </select>
+                <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm">
+                  <option value="">All Categories</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <div className="flex items-center gap-2">
+                  <input type="date" value={filterDateStart} onChange={(e) => setFilterDateStart(e.target.value)} className="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-2.5 text-[10px] font-bold text-slate-900 outline-none focus:border-blue-400 shadow-sm" />
+                  <span className="text-slate-400 font-bold">-</span>
+                  <input type="date" value={filterDateEnd} onChange={(e) => setFilterDateEnd(e.target.value)} className="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-2.5 text-[10px] font-bold text-slate-900 outline-none focus:border-blue-400 shadow-sm" />
+                </div>
               </div>
-              <form onSubmit={handleManualSubmit} className="space-y-6">
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-3 block">Transaction Type</label>
-                  <div className="flex p-1 bg-slate-50 rounded-[1.2rem] border-2 border-slate-100">
-                    {['income', 'expense', 'transfer'].map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, type: t })}
-                        className={`flex-1 py-3 rounded-[1rem] text-[10px] font-black uppercase tracking-widest transition-all ${
-                          formData.type === t
-                            ? t === 'income' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200'
-                            : t === 'expense' ? 'bg-red-500 text-white shadow-lg shadow-red-200'
-                            : 'bg-blue-500 text-white shadow-lg shadow-blue-200'
-                            : 'text-slate-400 hover:bg-white'
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-3 block">Transaction Date</label>
-                  <input type="date" required className="w-full bg-white border-2 border-slate-100 rounded-[1.2rem] px-6 py-5 text-sm font-bold text-black focus:border-blue-500 outline-none transition-all shadow-sm" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-3 block">From Account</label>
-                    <select required className="w-full bg-white border-2 border-slate-100 rounded-[1.2rem] px-5 py-4 text-[10px] font-black uppercase shadow-sm outline-none focus:border-blue-500" value={formData.wallet_id} onChange={(e) => setFormData({ ...formData, wallet_id: e.target.value })}>
-                      <option value="">Select...</option>
-                      {wallets.map(w => (<option key={w.id} value={w.id}>{w.name}</option>))}
-                    </select>
-                  </div>
-                  {formData.type === 'transfer' ? (
-                    <div>
-                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-3 block">To Account</label>
-                      <select required className="w-full bg-white border-2 border-slate-100 rounded-[1.2rem] px-5 py-4 text-[10px] font-black uppercase shadow-sm outline-none focus:border-blue-500" value={formData.to_wallet_id} onChange={(e) => setFormData({ ...formData, to_wallet_id: e.target.value })}>
-                        <option value="">Select...</option>
-                        {wallets.filter(w => w.id.toString() !== formData.wallet_id).map(w => (<option key={w.id} value={w.id}>{w.name}</option>))}
-                      </select>
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-3 block">Amount</label>
-                      <input type="text" placeholder="0" required className="w-full bg-white border-2 border-slate-100 rounded-[1.2rem] px-5 py-4 text-sm font-black focus:border-blue-500 outline-none shadow-sm" value={formatDisplayAmount(formData.amount)} onChange={handleAmountChange} />
-                    </div>
-                  )}
-                </div>
-
-                {formData.type === 'transfer' && (
-                  <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-3 block">Transfer Amount</label>
-                    <input type="text" placeholder="0" required className="w-full bg-white border-2 border-slate-100 rounded-[1.2rem] px-5 py-4 text-sm font-black focus:border-blue-500 outline-none shadow-sm" value={formatDisplayAmount(formData.amount)} onChange={handleAmountChange} />
-                  </div>
-                )}
-
-                {formData.type !== 'transfer' && (
-                  <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-3 block">Category / Item</label>
-                    <select required={formData.type !== 'transfer'} className="w-full bg-white border-2 border-slate-100 rounded-[1.2rem] px-6 py-5 text-xs font-black uppercase shadow-sm outline-none focus:border-blue-500" value={formData.item_id} onChange={(e) => setFormData({ ...formData, item_id: e.target.value })}>
-                      <option value="">Choose category...</option>
-                      {masterItems.filter(item => {
-                         const type = (item.categories as any)?.type;
-                         return type === formData.type;
-                      }).map(item => (<option key={item.id} value={item.id}>[{item.code}] {item.name}</option>))}
-                    </select>
-                  </div>
-                )}
-
-                {(formData.type === 'expense' || formData.type === 'income') && (
-                  <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-3 block">Project (Optional)</label>
-                    <select className="w-full bg-white border-2 border-slate-100 rounded-[1.2rem] px-6 py-5 text-xs font-black uppercase shadow-sm outline-none focus:border-blue-500" value={formData.project_id} onChange={(e) => setFormData({ ...formData, project_id: e.target.value })}>
-                      <option value="">Link to Project...</option>
-                      {projects.map(p => (<option key={p.id} value={p.id}>{p.name}</option>))}
-                    </select>
-                  </div>
-                )}
-
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-3 block">Description</label>
-                  <input type="text" placeholder="e.g. Lunch, Salary, etc." required className="w-full bg-white border-2 border-slate-100 rounded-[1.2rem] px-6 py-5 text-sm font-bold text-black focus:border-blue-500 outline-none transition-all shadow-sm" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-3 block">Additional Notes (Optional)</label>
-                  <textarea placeholder="Any extra details..." className="w-full bg-white border-2 border-slate-100 rounded-[1.2rem] px-6 py-4 text-xs font-bold outline-none focus:border-blue-500 h-20 resize-none shadow-sm" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
-                </div>
-
-                {formData.type === 'expense' && activeDebts.length > 0 && (
-                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-6 bg-red-50 rounded-[2.5rem] border-2 border-red-100">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-red-800 mb-3 block">Link to Debt Payment</label>
-                    <select className="w-full bg-white border-2 border-red-100 rounded-[1.2rem] px-5 py-4 text-[10px] font-black uppercase" value={formData.debt_id} onChange={(e) => setFormData({ ...formData, debt_id: e.target.value })}>
-                      <option value="">Select debt record...</option>
-                      {activeDebts.map(d => (<option key={d.id} value={d.id}>{d.name} (Rem: {new Intl.NumberFormat('id-ID').format(d.remaining_amount)})</option>))}
-                    </select>
-                    <p className="text-[8px] font-black text-red-400 mt-2 uppercase tracking-widest">Updates debt balance automatically.</p>
-                  </motion.div>
-                )}
-                <button type="submit" className="w-full bg-black text-white font-black py-6 rounded-[1.5rem] shadow-xl hover:bg-slate-800 transition-all mt-4 tracking-widest text-[10px] uppercase">{editingId ? 'Update Entry' : 'Add History'}</button>
-              </form>
             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </div>
 
-      <AnimatePresence>
-        {selectedIds.length > 0 && (
-          <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }} className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[130] bg-black text-white px-10 py-5 rounded-[2.5rem] shadow-2xl flex items-center gap-8 border border-white/10 backdrop-blur-xl">
-            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400"><span className="text-white">{selectedIds.length}</span> items selected</div>
-            <button onClick={handleDeleteBulk} className="flex items-center gap-2 text-red-400 hover:text-red-300 font-black text-xs uppercase tracking-widest transition-colors"><Trash2 size={18} /> Delete Selected</button>
-            <button onClick={() => setSelectedIds([])} className="text-[9px] font-black text-slate-500 hover:text-white uppercase tracking-widest">Cancel</button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="bg-white p-6 rounded-[1.5rem] border-2 border-slate-50 shadow-xl mb-10 flex flex-col lg:flex-row items-center justify-between gap-6 group hover:border-blue-100 transition-all">
-        <div className="flex items-center gap-5">
-          <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 shadow-md group-hover:scale-110 transition-transform"><Download size={20} /></div>
-          <div>
-            <h3 className="text-lg font-black text-black">Import Excel Logs</h3>
-            <p className="text-xs text-slate-600 font-bold tracking-tight">Sync multiple transactions instantly.</p>
-          </div>
-        </div>
-        <div className="flex gap-3 w-full lg:w-auto">
-          <button onClick={downloadTemplate} className="flex-1 lg:flex-none px-6 py-3 bg-slate-50 text-slate-700 rounded-xl text-[9px] font-black hover:bg-slate-100 border border-slate-200 transition-all uppercase tracking-widest">Get Format</button>
-          <button onClick={handleImportClick} className="flex-1 lg:flex-none px-8 py-3 bg-black text-white rounded-xl text-[9px] font-black hover:bg-slate-800 transition-all shadow-xl uppercase tracking-widest">Upload File</button>
-          <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".xlsx, .xls" />
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-6">
+        <SummaryCard title="Income" value={filteredSummary.income} icon={<TrendingUp size={16} />} color="text-emerald-600" bg="bg-emerald-50" />
+        <SummaryCard title="Expenses" value={filteredSummary.expense} icon={<TrendingDown size={16} />} color="text-red-600" bg="bg-red-50" />
+        <div className="col-span-2 md:col-span-1">
+            <SummaryCard title="Net Flow" value={netBalance} icon={<Activity size={16} />} color={netBalance >= 0 ? "text-blue-600" : "text-amber-600"} bg={netBalance >= 0 ? "bg-blue-50" : "bg-amber-50"} />
         </div>
       </div>
 
-      <div className="bg-white rounded-[1.5rem] border-2 border-slate-100 shadow-sm overflow-hidden min-h-[400px]">
-        <div className="bg-slate-50/50 p-4 border-b-2 border-slate-100 flex justify-between items-center px-6">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Registry</p>
-          <span className="text-[9px] font-black text-slate-400 uppercase">
-            Total: {filteredTransactions.length} {filteredTransactions.length === 1 ? 'entry' : 'entries'}
-          </span>
+      {/* Table */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="bg-slate-50/50 p-4 border-b border-slate-100 flex flex-wrap justify-between items-center px-4 md:px-6 gap-4">
+          <div className="flex items-center gap-2">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Registry</p>
+            <span className="text-[10px] bg-slate-200/50 text-slate-600 px-2 py-0.5 rounded-full font-bold">{totalItems} records</span>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rows</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none focus:border-blue-400 transition-colors"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 border-b-2 border-slate-100 text-slate-400 font-black uppercase text-[8px] tracking-widest">
+        <div className="overflow-x-auto no-scrollbar">
+          <table className="w-full text-left min-w-[600px]">
+            <thead className="bg-slate-50/50 border-b border-slate-100">
               <tr>
-                <th className="px-6 py-4 w-10 text-center">
-                  <input type="checkbox" className="w-4 h-4 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500" checked={selectedIds.length === filteredTransactions.length && filteredTransactions.length > 0} onChange={toggleSelectAll} />
-                </th>
-                <th className="px-5 py-4 tracking-[0.2em]">Detail</th>
-                <th className="px-4 py-4 tracking-[0.2em] hidden md:table-cell">Account</th>
-                <th className="px-4 py-4 tracking-[0.2em] hidden lg:table-cell text-center">Category</th>
-                <th className="px-6 py-4 tracking-[0.2em] text-right font-black">Movement</th>
-                <th className="px-6 py-4 tracking-[0.2em] text-center">Actions</th>
+                <th className="px-6 py-3 w-10 text-center"><input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-0" checked={selectedIds.length === transactions.length && transactions.length > 0} onChange={toggleSelectAll} /></th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Description</th>
+                <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden md:table-cell">Account</th>
+                <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden lg:table-cell text-center">Category</th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Amount</th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y-2 divide-slate-50">
-              {loading ? (<tr><td colSpan={6} className="text-center py-20 text-slate-400 font-black uppercase tracking-widest text-[10px] animate-pulse">Syncing Mission History...</td></tr>) :
-                filteredTransactions.length === 0 ? (<tr><td colSpan={6} className="text-center py-24 text-slate-400 font-black uppercase tracking-widest text-[10px]">No entries match your filters.</td></tr>) : (
-                  paginatedTransactions.map((trx) => (
-                    <tr key={trx.id} className={`hover:bg-slate-50/50 transition-all group ${selectedIds.includes(trx.id) ? 'bg-blue-50/30' : ''}`}>
-                      <td className="px-6 py-3.5 text-center">
-                        <input type="checkbox" className="w-4 h-4 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500" checked={selectedIds.includes(trx.id)} onChange={() => toggleSelect(trx.id)} />
-                      </td>
-                      <td className="px-5 py-3.5">
+            <tbody className="divide-y divide-slate-50">
+              {loading ? (<tr><td colSpan={6} className="text-center py-12 text-xs text-slate-400 font-bold uppercase tracking-widest">Syncing Records...</td></tr>) :
+                transactions.length === 0 ? (<tr><td colSpan={6} className="text-center py-12 text-xs text-slate-400 font-bold uppercase tracking-widest">No records found</td></tr>) : (
+                  transactions.map((trx) => (
+                    <tr key={trx.id} className={`group hover:bg-slate-50 transition-colors ${selectedIds.includes(trx.id) ? 'bg-blue-50/30' : ''}`}>
+                      <td className="px-6 py-3 text-center"><input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-0" checked={selectedIds.includes(trx.id)} onChange={() => toggleSelect(trx.id)} /></td>
+                      <td className="px-6 py-3">
                         <div className="flex items-center gap-3">
-                          <div className={`w-1.5 h-6 rounded-full ${
-                            trx.type === 'income' ? 'bg-emerald-500' :
-                            trx.type === 'transfer' ? 'bg-blue-500' :
-                            'bg-red-500'
-                          } opacity-20 group-hover:opacity-100 transition-all`} />
+                          <div className={`w-1 h-8 rounded-full ${trx.type === 'income' ? 'bg-emerald-400' : trx.type === 'transfer' ? 'bg-blue-400' : 'bg-red-400'} opacity-80`} />
                           <div>
-                            <span className="text-[8px] text-slate-400 font-black uppercase tracking-widest block mb-0.5">{new Date(trx.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
-                            <span className="font-black text-black text-sm uppercase tracking-tight">
-                              {trx.type === 'transfer' ? 'Transfer' : trx.item?.name || 'Manual Entry'}
-                            </span>
-                            {trx.description && <span className="text-[9px] text-slate-500 font-bold uppercase mt-0.5 block line-clamp-1">{trx.description}</span>}
+                            <div className="flex items-center gap-2">
+                                <p className="text-sm font-bold text-slate-900 truncate max-w-[150px]">{trx.type === 'transfer' ? 'Transfer' : trx.item?.name || trx.description}</p>
+                                {trx.project && <span className="text-[8px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 font-bold uppercase tracking-tighter flex items-center gap-1"><Target size={8}/>{trx.project.name}</span>}
+                                {trx.asset && <span className="text-[8px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded border border-amber-100 font-bold uppercase tracking-tighter flex items-center gap-1"><PieChart size={8}/>{trx.asset.symbol}</span>}
+                            </div>
+                            <p className="text-[10px] text-slate-400 font-bold">{new Date(trx.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3.5 hidden md:table-cell">
-                        {trx.type === 'transfer' && trx.to_wallet ? (
-                          <div className="flex flex-col gap-1">
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-100">
-                              <Landmark size={10} /> {trx.wallet?.name || 'Unknown'}
-                            </span>
-                            <span className="text-[7px] text-slate-400 font-black uppercase text-center">↓ to</span>
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-100">
-                              <Landmark size={10} /> {trx.to_wallet?.name}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-100">
-                            <Landmark size={10} /> {trx.wallet?.name || 'Unknown'}
-                          </span>
-                        )}
+                      <td className="px-4 py-3 hidden md:table-cell text-xs font-bold text-slate-600">
+                        {trx.type === 'transfer' ? (
+                          <div className="flex flex-col gap-0.5"><span className="text-slate-900">{trx.wallet?.name}</span><span className="text-[9px] text-slate-400 font-bold">to {trx.to_wallet?.name}</span></div>
+                        ) : (trx.wallet?.name)}
                       </td>
-                      <td className="px-4 py-3.5 hidden lg:table-cell text-center">
-                        <span className="px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest bg-slate-50 text-slate-500 border border-slate-100">
-                          {(trx.item as any)?.categories?.name || 'General'}
+                      <td className="px-4 py-3 hidden lg:table-cell text-center">
+                        <span className="px-2.5 py-1 rounded-md text-[9px] font-bold bg-slate-50 text-slate-500 border border-slate-100 uppercase tracking-tighter">{(trx.item as any)?.categories?.name || 'General'}</span>
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        <span className={`text-sm font-bold ${trx.type === 'income' ? 'text-emerald-600' : trx.type === 'transfer' ? 'text-blue-600' : 'text-slate-900'}`}>
+                          {trx.type === 'expense' && '- '}
+                          {new Intl.NumberFormat('id-ID').format(trx.amount)}
                         </span>
                       </td>
-                      <td className={`px-6 py-3.5 text-right`}>
-                        <div className="flex flex-col items-end">
-                          <div className={`flex items-center gap-1.5 font-black text-base tracking-tighter ${
-                            trx.type === 'income' ? 'text-emerald-600' :
-                            trx.type === 'transfer' ? 'text-blue-600' :
-                            'text-black'
-                          }`}>
-                            {trx.type === 'income' ? <TrendingUp size={14} /> :
-                             trx.type === 'transfer' ? <Landmark size={14} /> :
-                             <TrendingDown size={14} />}
-                            {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(trx.amount)}
-                          </div>
-                          <p className="text-[7px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
-                            {trx.type === 'income' ? 'In' : trx.type === 'transfer' ? 'Transfer' : 'Out'}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-3.5 text-center">
-                        <div className="flex justify-center gap-1">
-                          <button onClick={() => openEditModal(trx)} className="p-2 text-slate-400 hover:text-blue-600 transition-all border border-transparent hover:border-blue-50 rounded-lg sm:opacity-0 group-hover:opacity-100"><Edit3 size={14} /></button>
-                          <button onClick={() => handleDeleteSingle(trx.id)} className="p-2 text-slate-400 hover:text-red-600 transition-all border border-transparent hover:border-red-50 rounded-lg sm:opacity-0 group-hover:opacity-100"><Trash2 size={14} /></button>
+                      <td className="px-6 py-3 text-center">
+                        <div className="flex justify-center gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => openEditModal(trx)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit3 size={14} /></button>
+                          <button onClick={() => handleDeleteSingle(trx.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={14} /></button>
                         </div>
                       </td>
                     </tr>
@@ -802,36 +390,103 @@ export default function TransactionsPage() {
             </tbody>
           </table>
         </div>
-
-        {/* Pagination Controls */}
-        {!loading && filteredTransactions.length > 0 && (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={(items) => { setItemsPerPage(items); setCurrentPage(1); }}
-            totalItems={filteredTransactions.length}
-            startIndex={startIndex}
-            endIndex={endIndex}
-          />
-        )}
+        {/* Pagination */}
+        {!loading && totalItems > 0 && <div className="p-4 border-t border-slate-50"><Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} itemsPerPage={itemsPerPage} onItemsPerPageChange={(n) => { setItemsPerPage(n); setCurrentPage(1); }} totalItems={totalItems} startIndex={(currentPage - 1) * itemsPerPage} endIndex={Math.min(currentPage * itemsPerPage, totalItems)} /></div>}
       </div>
+
+      {/* Modal Integration Logic Remains Same */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-white w-full max-w-lg rounded-2xl shadow-xl p-5 md:p-6 max-h-[90vh] overflow-y-auto overscroll-contain no-scrollbar">
+               <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-lg font-bold text-slate-900">{editingId ? 'Edit Entry' : 'New Entry'}</h2>
+                    <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={18}/></button>
+               </div>
+               
+               <form onSubmit={handleManualSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Type</label>
+                        <div className="flex gap-2 p-1 bg-slate-50 rounded-lg">
+                        {['income', 'expense', 'transfer'].map(t => (
+                            <button key={t} type="button" onClick={() => setFormData({...formData, type: t})} className={`flex-1 py-2 text-[10px] font-bold rounded-md capitalize transition-all ${formData.type === t ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}>{t}</button>
+                        ))}
+                        </div>
+                    </div>
+                    <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Date</label><input type="date" className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} /></div>
+                  </div>
+
+                  <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Amount</label><input type="text" className="w-full text-base p-3 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 font-bold text-slate-900" placeholder="0" value={formatDisplayAmount(formData.amount)} onChange={handleAmountChange} /></div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">{formData.type === 'transfer' ? 'From Account' : 'Wallet'}</label><select className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.wallet_id} onChange={e => setFormData({...formData, wallet_id: e.target.value})}>
+                        <option value="">Select...</option>
+                        {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                    </select></div>
+                    {formData.type === 'transfer' ? (
+                        <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">To Account</label><select className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.to_wallet_id} onChange={e => setFormData({...formData, to_wallet_id: e.target.value})}>
+                            <option value="">Select...</option>
+                            {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                        </select></div>
+                    ) : (
+                        <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Category Item</label><select className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.item_id} onChange={e => setFormData({...formData, item_id: e.target.value})}>
+                            <option value="">Select...</option>
+                            {masterItems.filter(i => (i.categories as any)?.type === formData.type).map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                        </select></div>
+                    )}
+                  </div>
+
+                  <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Description</label><input type="text" placeholder="Note..." className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} /></div>
+
+                  <div className="pt-2 border-t border-slate-100 mt-2">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-3">Optional Associations</p>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="text-[9px] font-bold text-slate-500 mb-1 block uppercase">Project</label>
+                            <select className="w-full text-[10px] p-2 bg-slate-50 rounded-lg outline-none text-slate-900 font-bold" value={formData.project_id} onChange={e => setFormData({...formData, project_id: e.target.value})}>
+                                <option value="">None</option>
+                                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-[9px] font-bold text-slate-500 mb-1 block uppercase">Asset</label>
+                            <select className="w-full text-[10px] p-2 bg-slate-50 rounded-lg outline-none text-slate-900 font-bold" value={formData.asset_id} onChange={e => setFormData({...formData, asset_id: e.target.value})}>
+                                <option value="">None</option>
+                                {assets.map(a => <option key={a.id} value={a.id}>{a.symbol}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                  </div>
+
+                  <button type="submit" className="w-full py-3.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors mt-2 shadow-lg shadow-slate-200 uppercase tracking-widest active:scale-[0.98]">Save Transaction</button>
+               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selectedIds.length > 0 && (
+          <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-6">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedIds.length} selected</span>
+            <button onClick={handleDeleteBulk} className="text-[10px] font-bold text-red-400 hover:text-red-300 flex items-center gap-1 uppercase tracking-widest"><Trash2 size={12} /> Delete</button>
+            <button onClick={() => setSelectedIds([])} className="text-slate-500 hover:text-white"><X size={14} /></button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function SummaryCard({ title, value, icon, color, sub }: any) {
+function SummaryCard({ title, value, icon, color, bg }: any) {
   return (
-    <motion.div whileHover={{ y: -5 }} className="bg-white p-5 rounded-[1.5rem] border-2 border-slate-50 shadow-xl relative overflow-hidden group transition-all hover:border-blue-100">
-      <div className="flex items-center justify-between mb-6">
-        <div className="p-3 bg-slate-50 rounded-xl group-hover:bg-blue-50 transition-all shadow-sm">{icon}</div>
-        <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">{title}</p>
+    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between group hover:border-blue-100 transition-all">
+      <div>
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{title}</p>
+        <p className={`text-base md:text-xl font-bold ${color} tracking-tight`}>{new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(value)}</p>
       </div>
-      <p className={`text-xl font-black ${color} tracking-tighter`}>
-        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value)}
-      </p>
-      <p className="text-[9px] font-black text-slate-400 uppercase mt-2 tracking-widest opacity-80">{sub}</p>
-    </motion.div>
+      <div className={`p-2.5 rounded-xl ${bg} ${color} shadow-sm group-hover:scale-110 transition-transform`}>{icon}</div>
+    </div>
   );
 }

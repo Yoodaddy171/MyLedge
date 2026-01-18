@@ -3,64 +3,55 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
   try {
     const { assets } = await request.json();
-    const apiKey = process.env.TWELVE_DATA_API_KEY;
-    
-    if (!apiKey) {
-      return NextResponse.json({ error: 'API Key Twelve Data tidak ditemukan di .env.local' }, { status: 500 });
-    }
 
     if (!assets || !Array.isArray(assets)) {
       return NextResponse.json({ error: 'Invalid assets data' }, { status: 400 });
     }
 
-    // Siapkan daftar simbol untuk batch request (agar hemat kuota API)
-    // Twelve Data memungkinkan multiple symbols dipisah koma
-    const symbols = assets.map(asset => {
-      const type = asset.type.toLowerCase();
-      if (type === 'gold' || (type === 'other' && asset.symbol === 'XAU')) return 'XAU/USD,USD/IDR';
-      // Format IDX untuk Twelve Data adalah SYMBOL (tanpa suffix jika bursa default diset, tapi aman pakai suffix)
-      return `${asset.symbol}:IDX`;
-    }).join(',');
+    const updatedAssets = await Promise.all(
+      assets.map(async (asset) => {
+        try {
+          let newPrice = asset.current_price;
+          const type = asset.type.toLowerCase();
 
-    // Panggil Twelve Data API
-    const url = `https://api.twelvedata.com/price?symbol=${symbols}&apikey=${apiKey}`;
-    const response = await fetch(url);
-    const priceData = await response.json();
+          if (type === 'gold' || (type === 'other' && asset.symbol === 'XAU')) {
+            // Fetch Gold price (XAU/USD) from Yahoo Finance
+            const goldResponse = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/GC=F`);
+            const goldData = await goldResponse.json();
+            const goldPriceUSD = goldData?.chart?.result?.[0]?.meta?.regularMarketPrice;
 
-    if (priceData.status === 'error') {
-      throw new Error(priceData.message);
-    }
+            // Fetch USD/IDR rate
+            const usdIdrResponse = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/IDR=X`);
+            const usdIdrData = await usdIdrResponse.json();
+            const usdToIdr = usdIdrData?.chart?.result?.[0]?.meta?.regularMarketPrice;
 
-    const updatedAssets = assets.map(asset => {
-      try {
-        let newPrice = asset.current_price;
-        const type = asset.type.toLowerCase();
+            if (goldPriceUSD && usdToIdr) {
+              // 1 Troy Ounce = 31.1035 Gram
+              newPrice = Math.round((goldPriceUSD * usdToIdr) / 31.1035);
+            }
+          } else {
+            // Format untuk saham IDX di Yahoo Finance adalah SYMBOL.JK
+            const yahooSymbol = `${asset.symbol}.JK`;
+            const stockResponse = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}`);
+            const stockData = await stockResponse.json();
+            const stockPrice = stockData?.chart?.result?.[0]?.meta?.regularMarketPrice;
 
-        if (type === 'gold' || (type === 'other' && asset.symbol === 'XAU')) {
-          const goldPriceUSD = parseFloat(priceData['XAU/USD']?.price);
-          const usdToIdr = parseFloat(priceData['USD/IDR']?.price);
-          
-          if (goldPriceUSD && usdToIdr) {
-            // 1 Troy Ounce = 31.1035 Gram
-            newPrice = Math.round((goldPriceUSD * usdToIdr) / 31.1035);
+            if (stockPrice) {
+              newPrice = Math.round(stockPrice);
+            }
           }
-        } else {
-          const ticker = `${asset.symbol}:IDX`;
-          const stockPrice = parseFloat(priceData[ticker]?.price || priceData[asset.symbol]?.price);
-          if (stockPrice) {
-            newPrice = Math.round(stockPrice);
-          }
+
+          return { id: asset.id, current_price: newPrice };
+        } catch (e) {
+          console.error(`Error fetching price for ${asset.symbol}:`, e);
+          return { id: asset.id, current_price: asset.current_price };
         }
-
-        return { id: asset.id, current_price: newPrice };
-      } catch (e) {
-        return { id: asset.id, current_price: asset.current_price };
-      }
-    });
+      })
+    );
 
     return NextResponse.json({ updatedAssets });
   } catch (error: any) {
-    console.error("Twelve Data Sync Error:", error);
+    console.error("Yahoo Finance Sync Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

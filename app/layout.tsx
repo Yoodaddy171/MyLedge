@@ -20,7 +20,8 @@ import {
   X,
   Target,
   Landmark,
-  Calendar
+  Calendar,
+  Briefcase
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
@@ -71,7 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <h1 className="text-xl font-black tracking-tighter text-white uppercase italic">MyLedger</h1>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto pr-2 custom-scrollbar">
+      <nav className="flex-1 space-y-1 overflow-y-auto pr-2 no-scrollbar">
         <p className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4 text-white opacity-50">Core</p>
         <NavItem href="/" icon={<LayoutDashboard size={18} />} label="Dashboard" active={pathname === '/'} />
         <NavItem href="/analytics" icon={<BarChart3 size={18} />} label="Analytics" active={pathname === '/analytics'} />
@@ -84,6 +85,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <p className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-3 mt-8 text-white opacity-50">Productivity</p>
         <NavItem href="/schedule" icon={<Calendar size={18} />} label="Schedule" active={pathname === '/schedule'} />
         <NavItem href="/tasks" icon={<CheckSquare size={16} />} label="Tasks" active={pathname === '/tasks'} />
+        <NavItem href="/work" icon={<Briefcase size={18} />} label="Work Hub" active={pathname === '/work'} />
 
         <p className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-3 mt-8 text-white opacity-50">Management</p>
         <NavItem href="/banks" icon={<Landmark size={18} />} label="Banks" active={pathname === '/banks'} />
@@ -171,7 +173,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </>
             )}
 
-            <main className={`flex-1 overflow-y-auto ${!isAuthPage ? 'px-4 py-6 md:px-10 md:py-10' : ''}`}>
+            <main className={`flex-1 ${!isAuthPage ? 'px-4 py-6 md:px-10 md:py-10' : ''}`}>
               <ErrorBoundary>
                 <AnimatePresence mode="wait">
                   <motion.div

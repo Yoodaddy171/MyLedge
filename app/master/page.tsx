@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
-  Database, Search, Tag, Hash, TrendingUp, TrendingDown,
+  Database, Search, Tag, TrendingUp, TrendingDown,
   Download, Plus, Edit3, Trash2, X
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -37,7 +37,7 @@ export default function MasterDataPage() {
   async function fetchMasterData() {
     try {
       setLoading(true);
-      const { data, error } = await supabase.from('transaction_items').select('*, categories(name, type)').order('code', { ascending: true });
+      const { data, error } = await supabase.from('transaction_items').select('*, categories!fk_transaction_items_category(name, type)').order('code', { ascending: true });
       if (error) throw error;
       setItems(data || []);
     } catch (err) { console.error(err); }
@@ -104,48 +104,130 @@ export default function MasterDataPage() {
     reader.readAsArrayBuffer(file);
   };
 
-  const filtered = items.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()) || i.code.toLowerCase().includes(searchTerm.toLowerCase()) || i.categories?.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filtered = items.filter(i => 
+    i.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    i.code.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    i.categories?.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div className="max-w-6xl mx-auto pb-10 text-black font-black">
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
+    <div className="max-w-6xl mx-auto pb-20">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-black text-black tracking-tighter flex items-center gap-3">
-            <Database className="text-blue-600 w-7 h-7" /> Master Data
-          </h1>
-          <p className="text-slate-700 text-[10px] mt-1 font-bold tracking-widest uppercase opacity-50">System mapping.</p>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">Master Data</h1>
+          <p className="text-slate-500 text-xs md:text-sm mt-0.5">Configure transaction mapping</p>
         </div>
-        <button onClick={() => { setEditingId(null); setFormData({ name: '', code: '', category_id: '' }); setIsModalOpen(true); }} className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 rounded-xl text-[10px] font-black text-white hover:bg-blue-700 shadow-xl uppercase tracking-widest transition-all">
-          <Plus size={14} /> New Item
+        <button onClick={() => { setEditingId(null); setFormData({ name: '', code: '', category_id: '' }); setIsModalOpen(true); }} className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 shadow-lg flex items-center justify-center gap-2 active:scale-95 uppercase tracking-widest">
+          <Plus size={16} /> New Mapping
         </button>
       </header>
 
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8">
+        <StatCard label="Total Items" val={items.length} icon={<Tag size={16} className="text-blue-500" />} />
+        <StatCard label="Inbound" val={items.filter(i => i.categories?.type === 'income').length} icon={<TrendingUp size={16} className="text-emerald-500" />} />
+        <div className="hidden md:flex">
+            <StatCard label="Outbound" val={items.filter(i => i.categories?.type === 'expense').length} icon={<TrendingDown size={16} className="text-red-500" />} />
+        </div>
+      </div>
+
+      <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-100 shadow-sm mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4 w-full">
+          <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 shadow-sm shrink-0">
+            <Download size={18} />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-slate-900">Data Synchronization</h3>
+            <p className="text-[10px] md:text-xs text-slate-500 font-medium">Bulk import your master mappings</p>
+          </div>
+        </div>
+        <div className="flex gap-2 w-full md:w-auto">
+          <button onClick={() => window.open('/master_template.xlsx', '_blank')} className="flex-1 md:flex-none px-4 py-2 bg-white text-slate-600 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-widest hover:bg-slate-50 border border-slate-200 transition-all">Template</button>
+          <button onClick={() => masterInputRef.current?.click()} className="flex-1 md:flex-none px-4 py-2 bg-slate-900 text-white rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-md active:scale-95">Upload</button>
+          <input type="file" ref={masterInputRef} onChange={handleMasterUpload} className="hidden" accept=".xlsx, .xls" />
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-slate-50 bg-slate-50/30 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+            <input type="text" placeholder="Search items or codes..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-sm" />
+          </div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Showing {filtered.length} entries</p>
+        </div>
+
+        <div className="overflow-x-auto no-scrollbar">
+          <table className="w-full text-left min-w-[500px]">
+            <thead>
+              <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                <th className="px-6 py-3 w-10 text-center">
+                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-0" checked={selectedIds.length === items.length && items.length > 0} onChange={() => setSelectedIds(selectedIds.length === items.length ? [] : items.map(i => i.id))} />
+                </th>
+                <th className="px-6 py-3">Code</th>
+                <th className="px-6 py-3">Item Name</th>
+                <th className="px-6 py-3 hidden sm:table-cell">Category</th>
+                <th className="px-6 py-3 text-center">Type</th>
+                <th className="px-6 py-3 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {loading ? (
+                <tr><td colSpan={6} className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest animate-pulse">Syncing master data...</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={6} className="py-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">No records found</td></tr>
+              ) : (
+                filtered.map((item) => (
+                  <tr key={item.id} className={`group hover:bg-slate-50 transition-colors ${selectedIds.includes(item.id) ? 'bg-blue-50/30' : ''}`}>
+                    <td className="px-6 py-3 text-center">
+                      <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-0" checked={selectedIds.includes(item.id)} onChange={() => setSelectedIds(selectedIds.includes(item.id) ? selectedIds.filter(i => i !== item.id) : [...selectedIds, item.id])} />
+                    </td>
+                    <td className="px-6 py-3">
+                      <span className="font-mono text-[9px] text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100 font-bold">{item.code}</span>
+                    </td>
+                    <td className="px-6 py-3 text-sm font-bold text-slate-900 truncate max-w-[150px]">{item.name}</td>
+                    <td className="px-6 py-3 hidden sm:table-cell text-[10px] text-slate-500 font-bold uppercase tracking-widest">{item.categories?.name}</td>
+                    <td className="px-6 py-3 text-center">
+                      <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-tighter ${item.categories?.type === 'income' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-red-50 text-red-600 border border-red-100'}`}>
+                        {item.categories?.type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3 text-center">
+                      <div className="flex justify-center gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => openEditModal(item)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit3 size={14} /></button>
+                        <button onClick={() => handleDeleteSingle(item.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="relative bg-white w-full max-w-sm rounded-[2rem] shadow-2xl p-8 overflow-hidden text-black font-black max-h-[90vh] overflow-y-auto overscroll-contain" style={{WebkitOverflowScrolling: 'touch'}}>
-              <div className="flex justify-between items-center mb-8 text-black">
-                <h2 className="text-xl font-black text-black uppercase tracking-tight">{editingId ? 'Edit Item' : 'New Item'}</h2>
-                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-black"><X size={18} /></button>
-              </div>
-              <form onSubmit={handleManualSubmit} className="space-y-6">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-white w-full max-w-md rounded-2xl shadow-xl p-5 md:p-6 text-black">
+              <h2 className="text-lg font-bold mb-6 text-slate-900">{editingId ? 'Edit Mapping' : 'New Mapping'}</h2>
+              <form onSubmit={handleManualSubmit} className="space-y-4">
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-2 block">Item Name</label>
-                  <input type="text" placeholder="e.g. Electricity Bill" required className="w-full bg-white border-2 border-slate-100 rounded-xl px-5 py-3.5 text-sm font-black shadow-sm outline-none focus:border-blue-500" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Item Name</label>
+                  <input type="text" placeholder="e.g. Monthly Salary" required className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-2 block">Item Code</label>
-                  <input type="text" placeholder="e.g. ELEC-001" required className="w-full bg-white border-2 border-slate-100 rounded-xl px-5 py-3.5 text-sm font-black shadow-sm outline-none uppercase focus:border-blue-500" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} />
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Internal Code</label>
+                  <input type="text" placeholder="e.g. INC-001" required className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none uppercase focus:ring-2 focus:ring-blue-100 font-bold text-slate-900" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-2 block">Category</label>
-                  <select required className="w-full bg-white border-2 border-slate-100 rounded-xl px-4 py-3 text-xs font-black uppercase shadow-sm outline-none focus:border-blue-500" value={formData.category_id} onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Category Link</label>
+                  <select required className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.category_id} onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}>
                     <option value="">Select Category...</option>
                     {categories.map(cat => (<option key={cat.id} value={cat.id}>{cat.name} ({cat.type})</option>))}
                   </select>
                 </div>
-                <button type="submit" className="w-full bg-black text-white font-black py-4 rounded-xl shadow-xl hover:bg-slate-800 transition-all mt-4 uppercase tracking-widest text-[10px]">Save Details</button>
+                <button type="submit" className="w-full py-3.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors mt-2 uppercase tracking-widest active:scale-[0.98] shadow-lg">Save Mapping Record</button>
               </form>
             </motion.div>
           </div>
@@ -154,106 +236,24 @@ export default function MasterDataPage() {
 
       <AnimatePresence>
         {selectedIds.length > 0 && (
-          <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }} className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[110] bg-black text-white px-8 py-4 rounded-3xl shadow-2xl flex items-center gap-6 border border-white/10 backdrop-blur-xl">
-            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 font-black"><span className="text-white">{selectedIds.length}</span> selected</div>
-            <button onClick={handleDeleteBulk} className="flex items-center gap-2 text-red-400 hover:text-red-300 font-black text-[10px] uppercase tracking-widest transition-colors"><Trash2 size={16} /> Delete</button>
-            <button onClick={() => setSelectedIds([])} className="text-[9px] font-black text-slate-500 hover:text-white uppercase tracking-widest">Cancel</button>
+          <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-6">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedIds.length} selected</span>
+            <button onClick={handleDeleteBulk} className="text-[10px] font-bold text-red-400 hover:text-red-300 flex items-center gap-1 uppercase tracking-widest"><Trash2 size={12} /> Delete</button>
+            <button onClick={() => setSelectedIds([])} className="text-slate-500 hover:text-white"><X size={14} /></button>
           </motion.div>
         )}
       </AnimatePresence>
-
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-6 rounded-2xl border-2 border-slate-100 shadow-sm mb-8 flex flex-col lg:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-4 w-full">
-          <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 shadow-inner">
-            <Download size={20} />
-          </div>
-          <div>
-            <h3 className="text-sm font-black text-black">Master Data Sync</h3>
-            <p className="text-[10px] text-slate-600 font-bold tracking-tight uppercase">Bulk import transaction items.</p>
-          </div>
-        </div>
-        <div className="flex gap-2 w-full lg:w-auto">
-          <button onClick={() => window.open('/master_template.xlsx', '_blank')} className="flex-1 lg:flex-none px-5 py-2.5 bg-slate-50 text-slate-700 rounded-xl text-[10px] font-black hover:bg-slate-100 border border-slate-200 uppercase tracking-widest transition-all">Template</button>
-          <button onClick={() => masterInputRef.current?.click()} className="flex-1 lg:flex-none px-5 py-2.5 bg-black text-white rounded-xl text-[10px] font-black hover:bg-slate-800 transition-all shadow-lg uppercase tracking-widest">Upload File</button>
-          <input type="file" ref={masterInputRef} onChange={handleMasterUpload} className="hidden" accept=".xlsx, .xls" />
-        </div>
-      </motion.div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-        <StatCard label="Total Items" val={items.length} icon={<Tag size={18} />} />
-        <StatCard label="Income Type" val={items.filter(i => i.categories?.type === 'income').length} icon={<TrendingUp size={18} />} />
-        <StatCard label="Expense Type" val={items.filter(i => i.categories?.type === 'expense').length} icon={<TrendingDown size={18} />} />
-      </div>
-
-      <div className="bg-white rounded-2xl border-2 border-slate-100 shadow-sm overflow-hidden mb-10">
-        <div className="p-6 border-b-2 border-slate-50 bg-slate-50/20">
-          <div className="relative w-full text-black">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input type="text" placeholder="Search master data..." className="w-full pl-11 pr-4 py-3 bg-white border-2 border-slate-100 rounded-xl text-sm font-black text-black focus:border-blue-500 outline-none transition-all shadow-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-slate-50/50 border-b border-slate-50 text-slate-400 font-black uppercase text-[9px] tracking-widest">
-                <th className="px-6 py-4 w-10 text-center">
-                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-blue-600" checked={selectedIds.length === items.length && items.length > 0} onChange={() => setSelectedIds(selectedIds.length === items.length ? [] : items.map(i => i.id))} />
-                </th>
-                <th className="px-6 py-4 tracking-widest">Code</th>
-                <th className="px-6 py-4 tracking-widest">Item Detail</th>
-                <th className="px-6 py-4 hidden sm:table-cell tracking-widest">Group</th>
-                <th className="px-6 py-4 text-center tracking-widest">Type</th>
-                <th className="px-6 py-4 text-center tracking-widest">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y-2 divide-slate-50 text-black">
-              {loading ? (
-                <tr><td colSpan={6} className="text-center py-20 text-slate-400 font-black uppercase tracking-widest text-[10px] animate-pulse">Syncing Mapping...</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-24 text-slate-400 font-black uppercase tracking-widest text-[10px]">No results found.</td></tr>
-              ) : (
-                filtered.map((item) => (
-                  <tr key={item.id} className={`hover:bg-slate-50/50 transition-all group ${selectedIds.includes(item.id) ? 'bg-blue-50/30' : ''}`}>
-                    <td className="px-6 py-4 text-center">
-                      <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-blue-600" checked={selectedIds.includes(item.id)} onChange={() => setSelectedIds(selectedIds.includes(item.id) ? selectedIds.filter(i => i !== item.id) : [...selectedIds, item.id])} />
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="bg-slate-50 px-3 py-1.5 rounded-lg font-mono text-[9px] text-blue-600 font-black border border-blue-50">{item.code}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="font-black text-black text-sm tracking-tight uppercase">{item.name}</p>
-                    </td>
-                    <td className="px-6 py-4 hidden sm:table-cell">
-                      <span className="text-[10px] text-slate-500 font-black uppercase tracking-tight">{item.categories?.name}</span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${item.categories?.type === 'income' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
-                        {item.categories?.type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex justify-center gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-all">
-                        <button onClick={() => openEditModal(item)} className="p-2 text-slate-400 hover:text-blue-600 transition-all border border-transparent hover:border-blue-50 rounded-lg"><Edit3 size={16} /></button>
-                        <button onClick={() => handleDeleteSingle(item.id)} className="p-2 text-slate-400 hover:text-red-600 transition-all border border-transparent hover:border-red-50 rounded-lg"><Trash2 size={16} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table></div>
-      </div>
     </div>
   );
 }
 
 function StatCard({ label, val, icon }: any) {
   return (
-    <div className="bg-white p-6 rounded-2xl border-2 border-slate-50 shadow-sm flex items-center gap-5 transition-all hover:border-blue-50 group">
-      <div className="p-3 bg-slate-50 rounded-xl group-hover:scale-110 transition-all">{icon}</div>
-      <div>
-        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{label}</p>
-        <p className="text-2xl font-black text-black tracking-tighter">{val}</p>
+    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row items-center md:items-center gap-3 md:gap-4 transition-all hover:border-blue-100 group">
+      <div className="p-2 bg-slate-50 rounded-lg group-hover:scale-110 transition-transform">{icon}</div>
+      <div className="text-center md:text-left">
+        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
+        <p className="text-base md:text-xl font-bold text-slate-900 leading-none">{val}</p>
       </div>
     </div>
   );

@@ -3,11 +3,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
-  User, Mail, Shield, Key, Bell, Smartphone,
+  User, Mail, Shield, Smartphone,
   CheckCircle2, Trophy, Settings as SettingsIcon,
-  LogOut, Camera, Save, Loader2, ArrowRight, X, Edit3
+  Camera, Loader2, ArrowRight, X, Edit3, Landmark, Receipt
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
@@ -15,7 +15,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
-  // States for Editable Fields
   const [fullName, setFullName] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -69,24 +68,13 @@ export default function ProfilePage() {
       const fileExt = file.name.split('.').pop();
       const filePath = `${user.id}-${Math.random()}.${fileExt}`;
 
-      // Upload to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file);
-
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file);
       if (uploadError) throw uploadError;
 
-      // Get Public URL
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
-
-      // Update Auth Metadata
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: { avatar_url: publicUrl }
-      });
-
+      const { error: updateError } = await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
       if (updateError) throw updateError;
-
-      alert("Profile picture updated!");
+      
       fetchProfileData();
     } catch (err: any) {
       alert("Upload failed: " + err.message);
@@ -96,7 +84,7 @@ export default function ProfilePage() {
   };
 
   const handleSignOutAll = async () => {
-    if (!confirm("Are you sure? This will sign out all active sessions.")) return;
+    if (!confirm("Sign out from all devices?")) return;
     const { error } = await supabase.auth.signOut({ scope: 'global' });
     if (error) alert(error.message);
     else window.location.href = '/login';
@@ -105,141 +93,108 @@ export default function ProfilePage() {
   const persona = stats.netWorth > 100000000 ? 'Wealth Master' : stats.netWorth > 10000000 ? 'Rising Investor' : 'Wealth Builder';
 
   return (
-    <div className="max-w-4xl mx-auto pb-10 text-black">
-      <header className="mb-10 flex justify-between items-end">
+    <div className="max-w-4xl mx-auto pb-20">
+      <header className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tighter text-black">Account Center</h1>
-          <p className="text-slate-700 font-bold mt-1 text-[10px] uppercase tracking-widest opacity-50">Personalize your MyLedger experience.</p>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">Account Settings</h1>
+          <p className="text-slate-500 text-xs md:text-sm mt-0.5">Manage your identity and security</p>
         </div>
         {updating && (
-          <div className="flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase animate-pulse">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Syncing...
+          <div className="flex items-center gap-2 text-blue-600 font-bold text-[10px] uppercase tracking-widest animate-pulse bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Syncing Changes
           </div>
         )}
       </header>
 
       {loading ? (
-        <div className="py-24 text-center animate-pulse font-black text-slate-400 tracking-widest text-xs">INITIALIZING SECURE SESSION...</div>
+        <div className="py-24 text-center animate-pulse text-slate-400 text-[10px] font-bold uppercase tracking-widest">Initializing Session...</div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-6">
 
-          {/* Header Card */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-8 rounded-2xl border-2 border-slate-100 shadow-sm flex flex-col md:flex-row items-center gap-8">
-            <div className="relative group">
-              <div className="w-24 h-24 bg-slate-900 rounded-xl flex items-center justify-center text-white relative shadow-2xl overflow-hidden">
+          {/* Header Profile Card */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-5 md:p-8 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row items-center gap-6 md:gap-8">
+            <div className="relative group shrink-0">
+              <div className="w-20 h-20 md:w-24 md:h-24 bg-slate-900 rounded-3xl flex items-center justify-center text-white relative overflow-hidden shadow-2xl border-4 border-white">
                 {user?.user_metadata?.avatar_url ? (
                   <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
                   <User size={32} />
                 )}
-                <button
-                  onClick={() => avatarInputRef.current?.click()}
-                  className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
-                >
+                <button onClick={() => avatarInputRef.current?.click()} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
                   <Camera size={20} />
                 </button>
               </div>
               <input type="file" ref={avatarInputRef} onChange={handleAvatarUpload} className="hidden" accept="image/*" />
             </div>
 
-            <div className="flex-1 text-center md:text-left">
+            <div className="flex-1 text-center md:text-left min-w-0">
               <div className="flex flex-col md:flex-row md:items-center gap-3 mb-2">
                 {isEditingName ? (
-                  <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-xl border border-slate-200">
-                    <input
-                      type="text"
-                      className="bg-transparent px-4 py-2 text-lg font-black outline-none w-full"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      autoFocus
-                    />
-                    <button onClick={handleUpdateName} className="p-2 bg-black text-white rounded-lg"><CheckCircle2 size={16} /></button>
-                    <button onClick={() => setIsEditingName(false)} className="p-2 text-slate-400"><X size={16} /></button>
+                  <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-xl border border-slate-200 w-full max-w-sm mx-auto md:mx-0">
+                    <input type="text" className="bg-transparent px-3 py-1.5 text-sm md:text-base font-bold outline-none w-full text-slate-900" value={fullName} onChange={(e) => setFullName(e.target.value)} autoFocus />
+                    <button onClick={handleUpdateName} className="p-2 bg-slate-900 text-white rounded-lg shadow-md active:scale-95"><CheckCircle2 size={14} /></button>
+                    <button onClick={() => setIsEditingName(false)} className="p-2 text-slate-400 hover:text-slate-600"><X size={14} /></button>
                   </div>
                 ) : (
-                  <>
-                    <h2 className="text-2xl font-black tracking-tight text-black">{user?.user_metadata?.full_name || 'Set Name'}</h2>
-                    <button onClick={() => setIsEditingName(true)} className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors"><Edit3 size={14} /></button>
-                  </>
+                  <div className="flex items-center gap-2 justify-center md:justify-start">
+                    <h2 className="text-xl md:text-2xl font-bold text-slate-900 truncate">{user?.user_metadata?.full_name || 'Set Your Name'}</h2>
+                    <button onClick={() => setIsEditingName(true)} className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors"><Edit3 size={16} /></button>
+                  </div>
                 )}
-                <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[8px] font-black uppercase tracking-widest border border-blue-100">{persona}</span>
+                <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[9px] font-bold uppercase tracking-widest border border-blue-100 w-fit mx-auto md:mx-0">{persona}</span>
               </div>
-              <p className="text-slate-500 font-bold flex items-center justify-center md:justify-start gap-2 mb-4 text-[10px] uppercase tracking-tight">
-                <Mail size={12} /> {user?.email}
+              <p className="text-slate-500 font-bold flex items-center justify-center md:justify-start gap-2 mb-6 text-[10px] md:text-xs uppercase tracking-wider">
+                <Mail size={12} className="text-slate-400" /> {user?.email}
               </p>
+              
               <div className="flex flex-wrap justify-center md:justify-start gap-3">
-                <div className="px-5 py-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Net Worth</p>
-                  <p className="text-sm font-black text-black">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(stats.netWorth)}</p>
+                <div className="px-4 py-2 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-2 shadow-sm">
+                  <Landmark size={14} className="text-slate-400" />
+                  <span className="text-[10px] md:text-xs font-bold text-slate-900">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(stats.netWorth)}</span>
                 </div>
-                <div className="px-5 py-2.5 bg-slate-50 rounded-xl border border-slate-100 text-center">
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Activities</p>
-                  <p className="text-sm font-black text-black">{stats.trxCount} items</p>
+                <div className="px-4 py-2 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-2 shadow-sm">
+                  <Receipt size={14} className="text-slate-400" />
+                  <span className="text-[10px] md:text-xs font-bold text-slate-900">{stats.trxCount} records</span>
                 </div>
               </div>
             </div>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 font-black">
-            {/* Account Settings */}
-            <div className="bg-white p-8 rounded-2xl border-2 border-slate-100 shadow-sm">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-black mb-8 flex items-center gap-2">
-                <SettingsIcon size={14} className="text-blue-600" /> Control Panel
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+              <h3 className="text-xs font-bold text-slate-900 mb-6 flex items-center gap-2 uppercase tracking-widest">
+                <SettingsIcon size={16} className="text-slate-400" /> Preferences
               </h3>
-              <div className="space-y-4">
-                <ProfileMenuItem
-                  icon={<Shield className="text-slate-400" />}
-                  label="Security Status"
-                  sub="Verified Account"
-                  onClick={() => alert("Multi-factor authentication coming soon.")}
-                />
-                <ProfileMenuItem
-                  icon={<Bell className="text-slate-400" />}
-                  label="Smart Alerts"
-                  sub="On"
-                />
-                <ProfileMenuItem
-                  icon={<Smartphone className="text-slate-400" />}
-                  label="Global Sign Out"
-                  sub="All devices"
-                  onClick={handleSignOutAll}
-                />
+              <div className="space-y-1">
+                <ProfileMenuItem icon={<Shield size={16} className="text-slate-400" />} label="Security Status" sub="Account verified" />
+                <ProfileMenuItem icon={<Smartphone size={16} className="text-slate-400" />} label="Sessions" sub="Active on 1 device" onClick={handleSignOutAll} />
               </div>
             </div>
 
-            {/* Achievement / Progress */}
-            <div className="bg-slate-900 p-8 rounded-2xl text-white shadow-xl shadow-slate-900/10 flex flex-col justify-center relative overflow-hidden group border border-slate-800">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700 pointer-events-none"><Trophy size={120} /></div>
-              <h3 className="text-xl font-black mb-1 relative z-10 text-white uppercase tracking-tight">Financial Tier</h3>
-              <p className="text-slate-400 text-[10px] font-bold leading-relaxed mb-8 relative z-10 uppercase tracking-wide">You are a <span className="text-blue-400 font-black">{persona}</span>. Record 10 more transactions to level up.</p>
-              <div className="mt-auto relative z-10">
-                <div className="flex justify-between text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2">
-                  <span>Milestone Progress</span>
+            <div className="bg-slate-900 p-6 rounded-2xl text-white shadow-xl relative overflow-hidden group border border-slate-800 flex flex-col justify-center min-h-[180px]">
+              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 group-hover:rotate-12 transition-all duration-700"><Trophy size={100} /></div>
+              <h3 className="text-base md:text-lg font-bold text-slate-100 mb-1">Elite Milestone</h3>
+              <p className="text-[10px] text-slate-400 mb-6 font-bold uppercase tracking-widest">Rank: <span className="text-blue-400 font-black">{persona}</span></p>
+              
+              <div className="mt-auto">
+                <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest">
+                  <span>Engagement</span>
                   <span>{Math.min(100, (stats.trxCount / 50) * 100).toFixed(0)}%</span>
                 </div>
-                <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden border border-white/5 shadow-inner">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(100, (stats.trxCount / 50) * 100)}%` }}
-                    transition={{ duration: 1.5, ease: "easeOut" }}
-                    className="h-full bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]"
-                  />
+                <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(100, (stats.trxCount / 50) * 100)}%` }} transition={{ duration: 1.5 }} className="h-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.6)]" />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Danger Zone */}
-          <div className="bg-red-50/50 p-8 rounded-2xl border-2 border-red-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="bg-red-50/30 p-5 md:p-6 rounded-2xl border border-red-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-red-600 mb-1">Privacy & Session</h3>
-              <p className="text-[9px] text-slate-600 font-black uppercase tracking-tight max-w-sm leading-relaxed">Revoke access from all browsers and devices. Security first.</p>
+              <h3 className="text-sm font-bold text-red-600 mb-1 uppercase tracking-tight">Security Protocol</h3>
+              <p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase tracking-wide max-w-sm">Emergency logout from all active sessions.</p>
             </div>
-            <button
-              onClick={handleSignOutAll}
-              className="px-8 py-4 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-red-700 transition-all shadow-lg active:scale-95 shrink-0"
-            >
-              TERMINATE ALL SESSIONS
+            <button onClick={handleSignOutAll} className="w-full md:w-auto px-5 py-2.5 bg-red-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-red-700 transition-all shadow-lg active:scale-95">
+              Sign Out All
             </button>
           </div>
 
@@ -251,15 +206,12 @@ export default function ProfilePage() {
 
 function ProfileMenuItem({ icon, label, sub, onClick }: any) {
   return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-white hover:shadow-xl hover:shadow-blue-500/5 rounded-2xl border-2 border-transparent hover:border-blue-50 transition-all text-black group"
-    >
+    <button onClick={onClick} className="w-full flex items-center justify-between p-3.5 hover:bg-slate-50 rounded-xl transition-all group border border-transparent hover:border-slate-100">
       <div className="flex items-center gap-4">
-        <div className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-100 group-hover:scale-110 transition-transform">{icon}</div>
+        <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-white group-hover:shadow-sm transition-all">{icon}</div>
         <div className="text-left">
-          <p className="text-xs font-black text-black uppercase tracking-tight">{label}</p>
-          {sub && <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest mt-0.5">{sub}</p>}
+          <p className="text-sm font-bold text-slate-900">{label}</p>
+          {sub && <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{sub}</p>}
         </div>
       </div>
       <ArrowRight size={14} className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />

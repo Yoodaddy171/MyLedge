@@ -5,7 +5,8 @@ import { supabase } from '@/lib/supabase';
 import { 
   ArrowLeft, 
   Download, 
-  PieChart as PieIcon
+  PieChart as PieIcon,
+  BarChart3
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -17,10 +18,11 @@ import {
   Bar,
   XAxis,
   YAxis,
-  CartesianGrid
 } from 'recharts';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
@@ -34,7 +36,7 @@ export default function DetailedReportPage() {
   async function fetchReportData() {
     try {
       setLoading(true);
-      const { data: trx } = await supabase.from('transactions').select('*, item:transaction_items(name, categories(name))');
+      const { data: trx } = await supabase.from('transactions').select('*, item:transaction_items!fk_transactions_item(name, categories!fk_transaction_items_category(name))');
       if (!trx) return;
       const grouped = trx.reduce((acc: any, curr: any) => {
         const item: any = Array.isArray(curr.item) ? curr.item[0] : curr.item;
@@ -48,67 +50,113 @@ export default function DetailedReportPage() {
     finally { setLoading(false); }
   }
 
+  const handleExport = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(20);
+    doc.text("MyLedger Financial Report", 14, 22);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+    doc.text("Spending Analysis by Category", 14, 36);
+
+    const tableBody = data
+      .sort((a, b) => b.value - a.value)
+      .map((item) => [
+        item.name,
+        new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.value)
+      ]);
+    
+    const total = data.reduce((sum, item) => sum + item.value, 0);
+    tableBody.push(['TOTAL', new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(total)]);
+
+    autoTable(doc, {
+      head: [['Category', 'Amount']],
+      body: tableBody,
+      startY: 45,
+      theme: 'grid',
+      headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255], fontStyle: 'bold' },
+      footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+      columnStyles: { 0: { cellWidth: 'auto' }, 1: { halign: 'right', fontStyle: 'bold' } },
+    });
+
+    doc.save(`MyLedger_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
   return (
-    <div className="max-w-5xl mx-auto pb-20 text-black font-black">
-      <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-10 md:mb-12">
+    <div className="max-w-5xl mx-auto pb-20">
+      <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-8">
         <div className="flex items-center gap-4 w-full sm:w-auto">
-            <button onClick={() => router.back()} className="p-3 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all shadow-sm shrink-0">
-                <ArrowLeft size={20} />
+            <button onClick={() => router.back()} className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-sm shrink-0">
+                <ArrowLeft size={18} className="text-slate-600" />
             </button>
-            <div className="min-w-0">
-                <h1 className="text-2xl md:text-3xl font-black tracking-tight truncate">Detailed Report</h1>
-                <p className="text-slate-700 font-bold text-[10px] uppercase tracking-widest mt-1 opacity-50">Spending Analysis</p>
+            <div>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900">Detailed Report</h1>
+                <p className="text-slate-500 text-sm mt-0.5 font-medium">Spending Analysis</p>
             </div>
         </div>
-        <button className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-black text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl">
+        <button 
+            onClick={handleExport}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800 transition-all shadow-lg active:scale-95"
+        >
             <Download size={16} /> Export PDF
         </button>
       </header>
 
-      {loading ? (<div className="py-20 text-center animate-pulse text-slate-400 font-black tracking-widest text-[10px]">PREPARING...</div>) : (
-        <div className="space-y-6 md:space-y-10">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-10">
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[3.5rem] border border-slate-200 shadow-sm flex flex-col items-center">
-                    <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-8 md:mb-10 flex items-center gap-2 w-full">
-                        <PieIcon size={14} className="text-blue-600" /> Distribution
-                    </h3>
-                    <div className="h-[250px] md:h-[300px] w-full">
+      {loading ? (<div className="py-20 text-center animate-pulse text-slate-400 font-medium text-xs">PREPARING REPORT...</div>) : (
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center">
+                    <div className="flex items-center gap-2 w-full mb-6">
+                        <PieIcon size={16} className="text-blue-500" />
+                        <h3 className="text-sm font-bold text-slate-900">Distribution</h3>
+                    </div>
+                    <div className="h-[250px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie data={data} innerRadius="65%" outerRadius="90%" paddingAngle={5} dataKey="value">
                                     {data.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />))}
                                 </Pie>
-                                <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }} />
+                                <Tooltip 
+                                    formatter={(value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value)}
+                                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 500 }} 
+                                />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[3.5rem] border border-slate-200 shadow-sm">
-                    <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6 md:mb-8">Legend & Totals</h3>
-                    <div className="space-y-2 md:space-y-3">
-                        {data.sort((a,b) => b.value - a.value).map((cat, idx) => (
-                            <div key={idx} className="flex justify-between items-center p-3 md:p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <h3 className="text-sm font-bold text-slate-900 mb-6">Summary by Category</h3>
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                        {[...data].sort((a,b) => b.value - a.value).map((cat, idx) => (
+                            <div key={idx} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100 transition-hover hover:border-blue-100">
                                 <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-2 md:w-2.5 h-2 md:h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                                    <span className="text-xs md:text-sm font-black text-black truncate">{cat.name}</span>
+                                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                                    <span className="text-sm font-medium text-slate-700 truncate">{cat.name}</span>
                                 </div>
-                                <span className="text-xs md:text-sm font-black text-slate-700 whitespace-nowrap ml-4">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(cat.value)}</span>
+                                <span className="text-sm font-bold text-slate-900 ml-4">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(cat.value)}</span>
                             </div>
                         ))}
                     </div>
                 </motion.div>
             </div>
 
-            <div className="bg-slate-900 p-6 md:p-10 rounded-[2rem] md:rounded-[3.5rem] text-white shadow-2xl overflow-hidden">
-                <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 mb-8 md:mb-10">Intensity Graph</h3>
-                <div className="h-[250px] md:h-[300px] w-full">
+            <div className="bg-slate-900 p-6 rounded-2xl text-white shadow-xl overflow-hidden border border-slate-800">
+                <div className="flex items-center gap-2 mb-8">
+                    <BarChart3 size={16} className="text-blue-400" />
+                    <h3 className="text-sm font-bold text-slate-100">Intensity Graph</h3>
+                </div>
+                <div className="h-[250px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={data} layout="vertical" margin={{ left: -20, right: 20 }}>
                             <XAxis type="number" hide />
-                            <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#fff', fontWeight: 900, fontSize: 10 }} width={100} />
-                            <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ borderRadius: '16px', border: 'none', color: '#000', fontWeight: 'bold' }} />
-                            <Bar dataKey="value" fill="#3b82f6" radius={[0, 10, 10, 0]} barSize={14} />
+                            <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontWeight: 500, fontSize: 11 }} width={100} />
+                            <Tooltip 
+                                formatter={(value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value)}
+                                cursor={{ fill: 'rgba(255,255,255,0.05)' }} 
+                                contentStyle={{ borderRadius: '12px', border: 'none', color: '#000', fontWeight: 600 }} 
+                            />
+                            <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={12} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>

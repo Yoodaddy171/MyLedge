@@ -4,53 +4,36 @@ import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { 
   Briefcase, 
-  FileText, 
   Plus, 
-  Download, 
   X, 
   CheckCircle2, 
   Clock, 
   AlertCircle,
   Trash2,
   Edit3,
-  Search,
-  Filter
+  FileText
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 
 export default function WorkHubPage() {
   const [submissions, setSubmissions] = useState<any[]>([]);
-  const [kpis, setKpis] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('submissions'); // submissions, jobdesk
+  const [activeTab, setActiveTab] = useState('submissions'); 
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
-    entity: '',
-    doc_number: '',
-    type: '',
-    status: 'Pending',
-    notes: ''
-  });
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [formData, setFormData] = useState({ entity: '', doc_number: '', type: '', status: 'Pending', notes: '' });
 
   useBodyScrollLock(isModalOpen);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   async function fetchData() {
     try {
       setLoading(true);
       const { data: sub } = await supabase.from('submissions').select('*').order('created_at', { ascending: false });
-      const { data: job } = await supabase.from('job_kpis').select('*');
       setSubmissions(sub || []);
-      setKpis(job || []);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   }
@@ -59,183 +42,149 @@ export default function WorkHubPage() {
     e.preventDefault();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
-    const payload = {
-        user_id: user.id,
-        ...formData
-    };
-
-    let error;
-    if (editingId) {
-        const { error: err } = await supabase.from('submissions').update(payload).eq('id', editingId);
-        error = err;
-    } else {
-        const { error: err } = await supabase.from('submissions').insert(payload);
-        error = err;
-    }
-
-    if (error) alert(error.message);
-    else {
-        setIsModalOpen(false);
-        setEditingId(null);
-        setFormData({ entity: '', doc_number: '', type: '', status: 'Pending', notes: '' });
-        fetchData();
-    }
-  };
-
-  const openEditModal = (sub: any) => {
-    setEditingId(sub.id);
-    setFormData({
-      entity: sub.entity,
-      doc_number: sub.doc_number || '',
-      type: sub.type || '',
-      status: sub.status || 'Pending',
-      notes: sub.notes || ''
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete this submission record?")) return;
-    await supabase.from('submissions').delete().eq('id', id);
+    const payload = { user_id: user.id, ...formData };
+    if (editingId) await supabase.from('submissions').update(payload).eq('id', editingId);
+    else await supabase.from('submissions').insert(payload);
+    setIsModalOpen(false); setEditingId(null);
+    setFormData({ entity: '', doc_number: '', type: '', status: 'Pending', notes: '' });
     fetchData();
   };
 
-  const getStatusColor = (status: string) => {
-    switch(status.toLowerCase()) {
-        case 'done': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
-        case 'pending': return 'bg-amber-50 text-amber-600 border-amber-100';
-        case 'rejected': return 'bg-red-50 text-red-600 border-red-100';
-        default: return 'bg-blue-50 text-blue-600 border-blue-100';
-    }
-  };
-
   return (
-    <div className="max-w-7xl mx-auto pb-10 text-black font-black">
-      <header className="flex justify-between items-center mb-10">
+    <div className="max-w-7xl mx-auto pb-20">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
-            <Briefcase className="text-blue-600" size={28} /> Work Hub
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <Briefcase className="text-blue-600" size={24} /> Work Hub
           </h1>
-          <p className="text-slate-700 font-bold mt-1 uppercase text-[9px] tracking-[0.2em] opacity-50">Professional Productivity</p>
+          <p className="text-slate-500 text-xs md:text-sm mt-0.5 font-bold uppercase tracking-widest">Professional Logistics</p>
         </div>
-        <button onClick={() => { setEditingId(null); setFormData({entity:'', doc_number:'', type:'', status:'Pending', notes:''}); setIsModalOpen(true); }} className="flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl">
-          <Plus size={14} /> New Submission
+        <button onClick={() => { setEditingId(null); setFormData({entity:'', doc_number:'', type:'', status:'Pending', notes:''}); setIsModalOpen(true); }} className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 uppercase tracking-widest">
+          <Plus size={16} /> New Entry
         </button>
       </header>
 
-      {/* Tabs */}
-      <div className="flex gap-4 mb-8 border-b border-slate-200">
-        <button onClick={() => setActiveTab('submissions')} className={`pb-3 px-1 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'submissions' ? 'text-black' : 'text-slate-400'}`}>
-            Submissions
-            {activeTab === 'submissions' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 w-full h-0.5 bg-black" />}
-        </button>
-        <button onClick={() => setActiveTab('jobdesk')} className={`pb-3 px-1 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'jobdesk' ? 'text-black' : 'text-slate-400'}`}>
-            Jobdesk & KPIs
-            {activeTab === 'jobdesk' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 w-full h-0.5 bg-black" />}
-        </button>
+      <div className="flex gap-6 mb-8 border-b border-slate-100 overflow-x-auto no-scrollbar">
+        <TabButton label="Submissions" active={activeTab === 'submissions'} onClick={() => setActiveTab('submissions')} />
+        <TabButton label="Jobdesk & KPI" active={activeTab === 'jobdesk'} onClick={() => setActiveTab('jobdesk')} />
       </div>
+
+      {loading ? (
+        <div className="py-20 text-center animate-pulse text-[10px] font-bold text-slate-400 uppercase tracking-widest">Syncing work hub...</div>
+      ) : activeTab === 'submissions' ? (
+        <div className="space-y-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+                <MiniStat label="Active" val={submissions.filter(s => s.status !== 'Done').length} icon={<Clock className="text-blue-500" size={16} />} />
+                <MiniStat label="Done" val={submissions.filter(s => s.status === 'Done').length} icon={<CheckCircle2 className="text-emerald-500" size={16} />} />
+                <div className="col-span-2 md:col-span-1">
+                    <MiniStat label="Alerts" val={submissions.filter(s => s.status === 'Rejected').length} icon={<AlertCircle className="text-red-500" size={16} />} />
+                </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto no-scrollbar">
+                    <table className="w-full text-left min-w-[600px]">
+                        <thead>
+                            <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                <th className="px-6 py-3">Entity & Document</th>
+                                <th className="px-6 py-3">Reference Type</th>
+                                <th className="px-6 py-3 text-center">Status</th>
+                                <th className="px-6 py-3 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                            {submissions.map((sub) => (
+                                <tr key={sub.id} className="hover:bg-slate-50 transition-colors group">
+                                    <td className="px-6 py-4">
+                                        <p className="text-sm font-bold text-slate-900">{sub.entity}</p>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">ID: {sub.doc_number || 'N/A'}</p>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-2">
+                                            <FileText size={14} className="text-slate-300" />
+                                            <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">{sub.type || 'General'}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <span className={`px-2.5 py-1 rounded-md text-[9px] font-bold border uppercase tracking-tighter ${sub.status === 'Done' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                                            {sub.status}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex justify-center gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => { setEditingId(sub.id); setFormData({...sub}); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg transition-colors"><Edit3 size={14} /></button>
+                                            <button onClick={() => { if(confirm('Delete?')) supabase.from('submissions').delete().eq('id', sub.id).then(fetchData); }} className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                            {submissions.length === 0 && (
+                                <tr><td colSpan={4} className="py-16 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">No logistics recorded.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+      ) : (
+        <div className="py-20 text-center bg-slate-50/50 rounded-3xl border border-dashed border-slate-200 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+            Performance metrics coming soon.
+        </div>
+      )}
 
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="relative bg-white w-full max-w-sm rounded-[2rem] shadow-2xl p-8 overflow-hidden text-black font-black">
-              <h2 className="text-xl font-black mb-8 uppercase tracking-tight">{editingId ? 'Edit Submission' : 'New Submission'}</h2>
-              <form onSubmit={handleManualSubmit} className="space-y-6">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-white w-full max-w-sm rounded-2xl shadow-xl p-5 md:p-6 overflow-hidden text-black font-black">
+              <h2 className="text-lg font-bold mb-6 text-slate-900">{editingId ? 'Edit Entry' : 'New Submission'}</h2>
+              <form onSubmit={handleManualSubmit} className="space-y-4">
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-2 block">Entity / PT</label>
-                  <input type="text" placeholder="e.g. PT Maju Bersama" required className="w-full bg-white border-2 border-slate-100 rounded-xl px-5 py-3.5 text-sm font-black shadow-sm outline-none focus:border-blue-500" value={formData.entity} onChange={(e) => setFormData({...formData, entity: e.target.value})} />
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Entity Name</label>
+                  <input type="text" placeholder="e.g. PT Maju Bersama" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-100 transition-all" value={formData.entity} onChange={(e) => setFormData({...formData, entity: e.target.value})} />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-2 block">Document ID</label>
-                  <input type="text" placeholder="e.g. DOC-2024-001" className="w-full bg-white border-2 border-slate-100 rounded-xl px-5 py-3.5 text-sm font-black shadow-sm outline-none focus:border-blue-500" value={formData.doc_number} onChange={(e) => setFormData({...formData, doc_number: e.target.value})} />
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Document Ref</label>
+                  <input type="text" placeholder="e.g. TAX-2025-001" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-100 transition-all" value={formData.doc_number} onChange={(e) => setFormData({...formData, doc_number: e.target.value})} />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-2 block">Type</label>
-                    <input type="text" placeholder="Tax / Permit" className="w-full bg-white border-2 border-slate-100 rounded-xl px-5 py-3.5 text-xs font-black uppercase shadow-sm outline-none focus:border-blue-500" value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})} />
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Category</label>
+                    <input type="text" placeholder="Permit / Tax" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-100 transition-all" value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})} />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-2 block">Status</label>
-                    <select className="w-full bg-white border-2 border-slate-100 rounded-xl px-4 py-3 text-xs font-black uppercase shadow-sm" value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})}>
-                      <option value="Pending">Pending</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Done">Done</option>
-                      <option value="Rejected">Rejected</option>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Status</label>
+                    <select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-100" value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})}>
+                      <option value="Pending">Pending</option><option value="In Progress">In Progress</option><option value="Done">Done</option><option value="Rejected">Rejected</option>
                     </select>
                   </div>
                 </div>
-                <button type="submit" className="w-full bg-black text-white font-black py-4 rounded-xl shadow-xl hover:bg-slate-800 transition-all mt-4 uppercase tracking-widest text-[10px]">Save Details</button>
+                <button type="submit" className="w-full py-3.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors mt-2 uppercase tracking-widest active:scale-[0.98] shadow-lg">Save Logistic Record</button>
               </form>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-
-      {activeTab === 'submissions' ? (
-        <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 text-black">
-                <StatCard label="Active" val={submissions.filter(s => s.status !== 'Done').length} icon={<Clock className="text-blue-600" size={20} />} />
-                <StatCard label="Completed" val={submissions.filter(s => s.status === 'Done').length} icon={<CheckCircle2 className="text-emerald-600" size={20} />} />
-                <StatCard label="Issues" val={submissions.filter(s => s.status === 'Rejected').length} icon={<AlertCircle className="text-red-600" size={20} />} />
-            </div>
-
-            <div className="bg-white rounded-2xl border-2 border-slate-100 shadow-sm overflow-hidden">
-                <table className="w-full text-left">
-                    <thead>
-                        <tr className="bg-slate-50/50 border-b border-slate-50 text-slate-400 font-black uppercase text-[9px] tracking-widest">
-                            <th className="px-8 py-5">Entity & Document Details</th>
-                            <th className="px-8 py-5">Type</th>
-                            <th className="px-8 py-5 text-center">Status</th>
-                            <th className="px-8 py-5 text-center">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y-2 divide-slate-50 text-black">
-                        {submissions.map((sub) => (
-                            <tr key={sub.id} className="hover:bg-slate-50/50 transition-all group">
-                                <td className="px-8 py-5">
-                                    <p className="text-sm font-black text-black tracking-tight">{sub.entity}</p>
-                                    <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mt-0.5">ID: {sub.doc_number || 'N/A'}</p>
-                                </td>
-                                <td className="px-8 py-5">
-                                    <span className="text-[10px] font-black text-slate-600 uppercase tracking-tight">{sub.type}</span>
-                                </td>
-                                <td className="px-8 py-5">
-                                    <div className="flex justify-center">
-                                        <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${getStatusColor(sub.status)}`}>
-                                            {sub.status}
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="px-8 py-5">
-                                    <div className="flex justify-center gap-1.5 sm:opacity-0 group-hover:opacity-100 transition-all">
-                                        <button onClick={() => openEditModal(sub)} className="p-2 text-slate-400 hover:text-blue-600 transition-all border border-transparent hover:border-blue-50 rounded-lg"><Edit3 size={16} /></button>
-                                        <button onClick={() => handleDelete(sub.id)} className="p-2 text-slate-400 hover:text-red-600 transition-all border border-transparent hover:border-red-50 rounded-lg"><Trash2 size={16} /></button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-      ) : (
-        <div className="py-20 text-center bg-white rounded-2xl border-2 border-dashed border-slate-100 text-slate-400 font-black uppercase tracking-widest text-[10px]">
-            KPI Integration Coming Soon.
-        </div>
-      )}
     </div>
   );
 }
 
-function StatCard({ label, val, icon }: any) {
+function TabButton({ label, active, onClick }: any) {
     return (
-        <div className="bg-white p-6 rounded-2xl border-2 border-slate-50 shadow-sm flex items-center gap-5 transition-all hover:border-blue-50 group">
-            <div className="p-3 bg-slate-50 rounded-xl group-hover:scale-110 transition-all">{icon}</div>
-            <div>
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{label}</p>
-                <p className="text-2xl font-black text-black tracking-tighter">{val}</p>
+        <button onClick={onClick} className={`pb-3 text-xs font-bold uppercase tracking-widest transition-all relative whitespace-nowrap px-1 ${active ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}>
+            {label}
+            {active && <motion.div layoutId="work-tab" className="absolute bottom-0 left-0 w-full h-0.5 bg-slate-900 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)]" />}
+        </button>
+    );
+}
+
+function MiniStat({ label, val, icon }: any) {
+    return (
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row items-center md:items-center gap-3 md:gap-4 transition-all hover:border-blue-100 group">
+            <div className="p-2 bg-slate-50 rounded-lg group-hover:scale-110 transition-transform">{icon}</div>
+            <div className="text-center md:text-left min-w-0">
+                <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
+                <p className="text-sm md:text-xl font-bold text-slate-900 leading-none truncate">{val}</p>
             </div>
         </div>
     );
