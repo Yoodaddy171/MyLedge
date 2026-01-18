@@ -41,3 +41,12 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# project docs & scripts
+/context/
+/scripts/
+/migrations/
+/Logs/
+/*.md
+!/README.md
+/COMMIT_MESSAGE.txt
