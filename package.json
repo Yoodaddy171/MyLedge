@@ -1,0 +1,49 @@
+{
+  "name": "evan-web-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "seed": "tsx scripts/seed-full-year.ts",
+    "schema:fetch": "tsx scripts/fetch-live-schema.ts",
+    "schema:inspect": "tsx scripts/introspect-schema.ts",
+    "schema:detailed": "tsx scripts/fetch-detailed-schema.ts"
+  },
+  "dependencies": {
+    "@headlessui/react": "^2.2.9",
+    "@hookform/resolvers": "^5.2.2",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.90.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.23.26",
+    "lenis": "^1.3.17",
+    "lucide-react": "^0.562.0",
+    "next": "16.1.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-error-boundary": "^6.1.0",
+    "react-hook-form": "^7.71.1",
+    "recharts": "^3.6.0",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.4.0",
+    "xlsx": "^0.18.5",
+    "yahoo-finance2": "^3.11.2",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "babel-plugin-react-compiler": "1.0.0",
+    "dotenv": "^17.2.3",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.1",
+    "tailwindcss": "^4",
+    "tsx": "^4.19.2",
+    "typescript": "^5"
+  }
+}
