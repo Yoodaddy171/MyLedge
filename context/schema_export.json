@@ -1,24 +1,24 @@
 {
-  "generated_at": "2026-01-18T09:28:32.277Z",
+  "generated_at": "2026-01-23T16:36:33.851Z",
   "database_url": "https://hriaaixvfyyscrernpod.supabase.co",
   "summary": {
     "total_tables": 16,
     "total_views": 5,
-    "total_rows": 407
+    "total_rows": 492
   },
   "tables": [
     {
       "name": "transactions",
-      "row_count": 362,
+      "row_count": 455,
       "columns": [
         {
           "name": "id",
           "type": "number",
           "nullable": false,
           "sample_values": [
-            904,
-            905,
-            906
+            3434,
+            3435,
+            2982
           ]
         },
         {
@@ -46,9 +46,9 @@
           "type": "number",
           "nullable": false,
           "sample_values": [
-            1089221.2036915147,
-            69718.92165693585,
-            760102.7195311479
+            50000,
+            10000000,
+            5000000
           ]
         },
         {
@@ -56,9 +56,9 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "2026-01-01",
-            "2026-01-02",
-            "2026-01-02"
+            "2026-01-22",
+            "2026-01-23",
+            "2025-01-01"
           ]
         },
         {
@@ -66,9 +66,9 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "Material for Bali Trip",
-            "Lunch",
-            "Material for Home Renovation"
+            "Test Transaction - Coffee",
+            "Payment for Car Loan",
+            "Apartment Rent"
           ]
         },
         {
@@ -76,9 +76,9 @@
           "type": "string",
           "nullable": true,
           "sample_values": [
-            "Project expense",
-            null,
-            "Project expense"
+            "",
+            "Debt Repayment",
+            null
           ]
         },
         {
@@ -86,9 +86,9 @@
           "type": "number",
           "nullable": false,
           "sample_values": [
-            11,
-            13,
-            11
+            36,
+            36,
+            36
           ]
         },
         {
@@ -103,22 +103,22 @@
         },
         {
           "name": "item_id",
-          "type": "nullable",
+          "type": "number",
           "nullable": true,
           "sample_values": [
+            129,
             null,
-            70,
-            null
+            131
           ]
         },
         {
           "name": "project_id",
-          "type": "number",
+          "type": "nullable",
           "nullable": true,
           "sample_values": [
-            9,
             null,
-            8
+            null,
+            null
           ]
         },
         {
@@ -127,7 +127,7 @@
           "nullable": true,
           "sample_values": [
             null,
-            null,
+            21,
             null
           ]
         },
@@ -176,9 +176,9 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "2026-01-18T05:11:33.52901+00:00",
-            "2026-01-18T05:11:33.52901+00:00",
-            "2026-01-18T05:11:33.52901+00:00"
+            "2026-01-22T01:31:04.037706+00:00",
+            "2026-01-23T16:11:25.256698+00:00",
+            "2026-01-18T16:49:45.347634+00:00"
           ]
         },
         {
@@ -186,112 +186,157 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "2026-01-18T05:11:33.52901+00:00",
-            "2026-01-18T05:11:33.52901+00:00",
-            "2026-01-18T05:11:33.52901+00:00"
+            "2026-01-23T16:32:46.986051+00:00",
+            "2026-01-23T16:11:25.256698+00:00",
+            "2026-01-18T16:49:45.347634+00:00"
+          ]
+        },
+        {
+          "name": "asset_id",
+          "type": "nullable",
+          "nullable": true,
+          "sample_values": [
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "name": "submission_id",
+          "type": "nullable",
+          "nullable": true,
+          "sample_values": [
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "name": "goal_id",
+          "type": "nullable",
+          "nullable": true,
+          "sample_values": [
+            null,
+            null,
+            null
           ]
         }
       ],
       "sample_rows": [
         {
-          "id": 904,
+          "id": 3434,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
           "type": "expense",
-          "amount": 1089221.2036915147,
-          "date": "2026-01-01",
-          "description": "Material for Bali Trip",
-          "notes": "Project expense",
-          "wallet_id": 11,
+          "amount": 50000,
+          "date": "2026-01-22",
+          "description": "Test Transaction - Coffee",
+          "notes": "",
+          "wallet_id": 36,
           "to_wallet_id": null,
-          "item_id": null,
-          "project_id": 9,
-          "debt_id": null,
-          "is_recurring": false,
-          "recurring_transaction_id": null,
-          "receipt_url": null,
-          "location": null,
-          "created_at": "2026-01-18T05:11:33.52901+00:00",
-          "updated_at": "2026-01-18T05:11:33.52901+00:00"
-        },
-        {
-          "id": 905,
-          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "type": "expense",
-          "amount": 69718.92165693585,
-          "date": "2026-01-02",
-          "description": "Lunch",
-          "notes": null,
-          "wallet_id": 13,
-          "to_wallet_id": null,
-          "item_id": 70,
+          "item_id": 129,
           "project_id": null,
           "debt_id": null,
           "is_recurring": false,
           "recurring_transaction_id": null,
           "receipt_url": null,
           "location": null,
-          "created_at": "2026-01-18T05:11:33.52901+00:00",
-          "updated_at": "2026-01-18T05:11:33.52901+00:00"
+          "created_at": "2026-01-22T01:31:04.037706+00:00",
+          "updated_at": "2026-01-23T16:32:46.986051+00:00",
+          "asset_id": null,
+          "submission_id": null,
+          "goal_id": null
         },
         {
-          "id": 906,
+          "id": 3435,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
           "type": "expense",
-          "amount": 760102.7195311479,
-          "date": "2026-01-02",
-          "description": "Material for Home Renovation",
-          "notes": "Project expense",
-          "wallet_id": 11,
+          "amount": 10000000,
+          "date": "2026-01-23",
+          "description": "Payment for Car Loan",
+          "notes": "Debt Repayment",
+          "wallet_id": 36,
           "to_wallet_id": null,
           "item_id": null,
-          "project_id": 8,
-          "debt_id": null,
+          "project_id": null,
+          "debt_id": 21,
           "is_recurring": false,
           "recurring_transaction_id": null,
           "receipt_url": null,
           "location": null,
-          "created_at": "2026-01-18T05:11:33.52901+00:00",
-          "updated_at": "2026-01-18T05:11:33.52901+00:00"
+          "created_at": "2026-01-23T16:11:25.256698+00:00",
+          "updated_at": "2026-01-23T16:11:25.256698+00:00",
+          "asset_id": null,
+          "submission_id": null,
+          "goal_id": null
         },
         {
-          "id": 907,
+          "id": 2982,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
           "type": "expense",
-          "amount": 61540.972664470035,
-          "date": "2026-01-03",
-          "description": "Lunch",
+          "amount": 5000000,
+          "date": "2025-01-01",
+          "description": "Apartment Rent",
           "notes": null,
-          "wallet_id": 13,
+          "wallet_id": 36,
           "to_wallet_id": null,
-          "item_id": 70,
+          "item_id": 131,
           "project_id": null,
           "debt_id": null,
           "is_recurring": false,
           "recurring_transaction_id": null,
           "receipt_url": null,
           "location": null,
-          "created_at": "2026-01-18T05:11:33.52901+00:00",
-          "updated_at": "2026-01-18T05:11:33.52901+00:00"
+          "created_at": "2026-01-18T16:49:45.347634+00:00",
+          "updated_at": "2026-01-18T16:49:45.347634+00:00",
+          "asset_id": null,
+          "submission_id": null,
+          "goal_id": null
         },
         {
-          "id": 908,
+          "id": 2983,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
           "type": "expense",
-          "amount": 2013327.0370893516,
-          "date": "2026-01-03",
-          "description": "Material for Bali Trip",
-          "notes": "Project expense",
-          "wallet_id": 11,
+          "amount": 89618.138062635,
+          "date": "2025-01-01",
+          "description": "Daily Lunch",
+          "notes": null,
+          "wallet_id": 38,
           "to_wallet_id": null,
-          "item_id": null,
-          "project_id": 9,
+          "item_id": 128,
+          "project_id": null,
           "debt_id": null,
           "is_recurring": false,
           "recurring_transaction_id": null,
           "receipt_url": null,
           "location": null,
-          "created_at": "2026-01-18T05:11:33.52901+00:00",
-          "updated_at": "2026-01-18T05:11:33.52901+00:00"
+          "created_at": "2026-01-18T16:49:45.347634+00:00",
+          "updated_at": "2026-01-18T16:49:45.347634+00:00",
+          "asset_id": null,
+          "submission_id": null,
+          "goal_id": null
+        },
+        {
+          "id": 2984,
+          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
+          "type": "expense",
+          "amount": 57445.6699729376,
+          "date": "2025-01-02",
+          "description": "Daily Lunch",
+          "notes": null,
+          "wallet_id": 38,
+          "to_wallet_id": null,
+          "item_id": 128,
+          "project_id": null,
+          "debt_id": null,
+          "is_recurring": false,
+          "recurring_transaction_id": null,
+          "receipt_url": null,
+          "location": null,
+          "created_at": "2026-01-18T16:49:45.347634+00:00",
+          "updated_at": "2026-01-18T16:49:45.347634+00:00",
+          "asset_id": null,
+          "submission_id": null,
+          "goal_id": null
         }
       ],
       "foreign_keys": [],
@@ -299,16 +344,16 @@
     },
     {
       "name": "categories",
-      "row_count": 12,
+      "row_count": 10,
       "columns": [
         {
           "name": "id",
           "type": "number",
           "nullable": false,
           "sample_values": [
-            31,
-            32,
-            33
+            89,
+            90,
+            91
           ]
         },
         {
@@ -328,7 +373,7 @@
           "sample_values": [
             "Salary",
             "Freelance",
-            "Investment Return"
+            "Investment"
           ]
         },
         {
@@ -376,9 +421,9 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "2026-01-18T05:11:32.659964+00:00",
-            "2026-01-18T05:11:32.659964+00:00",
-            "2026-01-18T05:11:32.659964+00:00"
+            "2026-01-18T16:49:44.50256+00:00",
+            "2026-01-18T16:49:44.50256+00:00",
+            "2026-01-18T16:49:44.50256+00:00"
           ]
         },
         {
@@ -386,67 +431,67 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "2026-01-18T05:11:32.659964+00:00",
-            "2026-01-18T05:11:32.659964+00:00",
-            "2026-01-18T05:11:32.659964+00:00"
+            "2026-01-18T16:49:44.50256+00:00",
+            "2026-01-18T16:49:44.50256+00:00",
+            "2026-01-18T16:49:44.50256+00:00"
           ]
         }
       ],
       "sample_rows": [
         {
-          "id": 31,
+          "id": 89,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
           "name": "Salary",
           "type": "income",
           "icon": "Briefcase",
           "color": "#10b981",
           "is_system": false,
-          "created_at": "2026-01-18T05:11:32.659964+00:00",
-          "updated_at": "2026-01-18T05:11:32.659964+00:00"
+          "created_at": "2026-01-18T16:49:44.50256+00:00",
+          "updated_at": "2026-01-18T16:49:44.50256+00:00"
         },
         {
-          "id": 32,
+          "id": 90,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
           "name": "Freelance",
           "type": "income",
           "icon": "Laptop",
           "color": "#34d399",
           "is_system": false,
-          "created_at": "2026-01-18T05:11:32.659964+00:00",
-          "updated_at": "2026-01-18T05:11:32.659964+00:00"
+          "created_at": "2026-01-18T16:49:44.50256+00:00",
+          "updated_at": "2026-01-18T16:49:44.50256+00:00"
         },
         {
-          "id": 33,
+          "id": 91,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "name": "Investment Return",
+          "name": "Investment",
           "type": "income",
           "icon": "TrendingUp",
           "color": "#6ee7b7",
           "is_system": false,
-          "created_at": "2026-01-18T05:11:32.659964+00:00",
-          "updated_at": "2026-01-18T05:11:32.659964+00:00"
+          "created_at": "2026-01-18T16:49:44.50256+00:00",
+          "updated_at": "2026-01-18T16:49:44.50256+00:00"
         },
         {
-          "id": 34,
-          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "name": "Gift",
-          "type": "income",
-          "icon": "Gift",
-          "color": "#a7f3d0",
-          "is_system": false,
-          "created_at": "2026-01-18T05:11:32.659964+00:00",
-          "updated_at": "2026-01-18T05:11:32.659964+00:00"
-        },
-        {
-          "id": 35,
+          "id": 92,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
           "name": "Food & Dining",
           "type": "expense",
           "icon": "Utensils",
           "color": "#ef4444",
           "is_system": false,
-          "created_at": "2026-01-18T05:11:32.659964+00:00",
-          "updated_at": "2026-01-18T05:11:32.659964+00:00"
+          "created_at": "2026-01-18T16:49:44.50256+00:00",
+          "updated_at": "2026-01-18T16:49:44.50256+00:00"
+        },
+        {
+          "id": 93,
+          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
+          "name": "Transportation",
+          "type": "expense",
+          "icon": "Car",
+          "color": "#f97316",
+          "is_system": false,
+          "created_at": "2026-01-18T16:49:44.50256+00:00",
+          "updated_at": "2026-01-18T16:49:44.50256+00:00"
         }
       ],
       "foreign_keys": [],
@@ -454,16 +499,16 @@
     },
     {
       "name": "transaction_items",
-      "row_count": 12,
+      "row_count": 10,
       "columns": [
         {
           "name": "id",
           "type": "number",
           "nullable": false,
           "sample_values": [
-            68,
-            69,
-            70
+            126,
+            127,
+            128
           ]
         },
         {
@@ -481,9 +526,9 @@
           "type": "number",
           "nullable": false,
           "sample_values": [
-            31,
-            32,
-            35
+            89,
+            90,
+            92
           ]
         },
         {
@@ -492,7 +537,7 @@
           "nullable": false,
           "sample_values": [
             "Monthly Salary",
-            "Freelance Project",
+            "Freelance Dev",
             "Lunch"
           ]
         },
@@ -511,9 +556,9 @@
           "type": "number",
           "nullable": false,
           "sample_values": [
-            15000000,
-            5000000,
-            50000
+            25000000,
+            8000000,
+            65000
           ]
         },
         {
@@ -531,9 +576,9 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "2026-01-18T05:11:32.812985+00:00",
-            "2026-01-18T05:11:32.812985+00:00",
-            "2026-01-18T05:11:32.812985+00:00"
+            "2026-01-18T16:49:44.683238+00:00",
+            "2026-01-18T16:49:44.683238+00:00",
+            "2026-01-18T16:49:44.683238+00:00"
           ]
         },
         {
@@ -541,67 +586,67 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "2026-01-18T05:11:32.812985+00:00",
-            "2026-01-18T05:11:32.812985+00:00",
-            "2026-01-18T05:11:32.812985+00:00"
+            "2026-01-18T16:49:44.683238+00:00",
+            "2026-01-18T16:49:44.683238+00:00",
+            "2026-01-18T16:49:44.683238+00:00"
           ]
         }
       ],
       "sample_rows": [
         {
-          "id": 68,
+          "id": 126,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "category_id": 31,
+          "category_id": 89,
           "name": "Monthly Salary",
           "code": "INC001",
-          "default_amount": 15000000,
+          "default_amount": 25000000,
           "is_favorite": false,
-          "created_at": "2026-01-18T05:11:32.812985+00:00",
-          "updated_at": "2026-01-18T05:11:32.812985+00:00"
+          "created_at": "2026-01-18T16:49:44.683238+00:00",
+          "updated_at": "2026-01-18T16:49:44.683238+00:00"
         },
         {
-          "id": 69,
+          "id": 127,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "category_id": 32,
-          "name": "Freelance Project",
+          "category_id": 90,
+          "name": "Freelance Dev",
           "code": "INC002",
-          "default_amount": 5000000,
+          "default_amount": 8000000,
           "is_favorite": false,
-          "created_at": "2026-01-18T05:11:32.812985+00:00",
-          "updated_at": "2026-01-18T05:11:32.812985+00:00"
+          "created_at": "2026-01-18T16:49:44.683238+00:00",
+          "updated_at": "2026-01-18T16:49:44.683238+00:00"
         },
         {
-          "id": 70,
+          "id": 128,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "category_id": 35,
+          "category_id": 92,
           "name": "Lunch",
           "code": "EXP001",
-          "default_amount": 50000,
+          "default_amount": 65000,
           "is_favorite": false,
-          "created_at": "2026-01-18T05:11:32.812985+00:00",
-          "updated_at": "2026-01-18T05:11:32.812985+00:00"
+          "created_at": "2026-01-18T16:49:44.683238+00:00",
+          "updated_at": "2026-01-18T16:49:44.683238+00:00"
         },
         {
-          "id": 71,
+          "id": 129,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "category_id": 35,
-          "name": "Dinner",
+          "category_id": 92,
+          "name": "Coffee",
           "code": "EXP002",
-          "default_amount": 75000,
+          "default_amount": 45000,
           "is_favorite": false,
-          "created_at": "2026-01-18T05:11:32.812985+00:00",
-          "updated_at": "2026-01-18T05:11:32.812985+00:00"
+          "created_at": "2026-01-18T16:49:44.683238+00:00",
+          "updated_at": "2026-01-18T16:49:44.683238+00:00"
         },
         {
-          "id": 72,
+          "id": 130,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "category_id": 35,
-          "name": "Groceries",
+          "category_id": 95,
+          "name": "Internet Bill",
           "code": "EXP003",
-          "default_amount": 500000,
+          "default_amount": 450000,
           "is_favorite": false,
-          "created_at": "2026-01-18T05:11:32.812985+00:00",
-          "updated_at": "2026-01-18T05:11:32.812985+00:00"
+          "created_at": "2026-01-18T16:49:44.683238+00:00",
+          "updated_at": "2026-01-18T16:49:44.683238+00:00"
         }
       ],
       "foreign_keys": [],
@@ -616,9 +661,9 @@
           "type": "number",
           "nullable": false,
           "sample_values": [
-            12,
-            14,
-            15
+            39,
+            40,
+            37
           ]
         },
         {
@@ -636,9 +681,9 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "Mandiri Savings",
             "GoPay",
-            "Credit Card"
+            "Credit Card",
+            "Mandiri Investment"
           ]
         },
         {
@@ -646,9 +691,9 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "bank",
             "e_wallet",
-            "credit_card"
+            "credit_card",
+            "bank"
           ]
         },
         {
@@ -656,9 +701,9 @@
           "type": "number",
           "nullable": false,
           "sample_values": [
-            100000000,
-            500000,
-            0
+            2000000,
+            0,
+            250000000
           ]
         },
         {
@@ -666,9 +711,9 @@
           "type": "number",
           "nullable": false,
           "sample_values": [
+            2000000,
             0,
-            0,
-            0
+            250000000
           ]
         },
         {
@@ -746,9 +791,9 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "2026-01-18T05:11:32.98027+00:00",
-            "2026-01-18T05:11:32.98027+00:00",
-            "2026-01-18T05:11:32.98027+00:00"
+            "2026-01-18T16:49:44.86259+00:00",
+            "2026-01-18T16:49:44.86259+00:00",
+            "2026-01-18T16:49:44.86259+00:00"
           ]
         },
         {
@@ -756,37 +801,20 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "2026-01-18T05:11:32.98027+00:00",
-            "2026-01-18T05:11:32.98027+00:00",
-            "2026-01-18T05:11:32.98027+00:00"
+            "2026-01-18T16:49:44.86259+00:00",
+            "2026-01-18T16:49:44.86259+00:00",
+            "2026-01-18T16:49:44.86259+00:00"
           ]
         }
       ],
       "sample_rows": [
         {
-          "id": 12,
-          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "name": "Mandiri Savings",
-          "type": "bank",
-          "initial_balance": 100000000,
-          "current_balance": 0,
-          "currency": "IDR",
-          "icon": null,
-          "color": null,
-          "is_active": true,
-          "is_excluded_from_total": false,
-          "account_number": null,
-          "notes": null,
-          "created_at": "2026-01-18T05:11:32.98027+00:00",
-          "updated_at": "2026-01-18T05:11:32.98027+00:00"
-        },
-        {
-          "id": 14,
+          "id": 39,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
           "name": "GoPay",
           "type": "e_wallet",
-          "initial_balance": 500000,
-          "current_balance": 0,
+          "initial_balance": 2000000,
+          "current_balance": 2000000,
           "currency": "IDR",
           "icon": null,
           "color": null,
@@ -794,11 +822,11 @@
           "is_excluded_from_total": false,
           "account_number": null,
           "notes": null,
-          "created_at": "2026-01-18T05:11:32.98027+00:00",
-          "updated_at": "2026-01-18T05:11:32.98027+00:00"
+          "created_at": "2026-01-18T16:49:44.86259+00:00",
+          "updated_at": "2026-01-18T16:49:44.86259+00:00"
         },
         {
-          "id": 15,
+          "id": 40,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
           "name": "Credit Card",
           "type": "credit_card",
@@ -811,16 +839,16 @@
           "is_excluded_from_total": false,
           "account_number": null,
           "notes": null,
-          "created_at": "2026-01-18T05:11:32.98027+00:00",
-          "updated_at": "2026-01-18T05:11:32.98027+00:00"
+          "created_at": "2026-01-18T16:49:44.86259+00:00",
+          "updated_at": "2026-01-18T16:49:44.86259+00:00"
         },
         {
-          "id": 11,
+          "id": 37,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "name": "Main BCA",
+          "name": "Mandiri Investment",
           "type": "bank",
-          "initial_balance": 50000000,
-          "current_balance": 97128296.57517184,
+          "initial_balance": 250000000,
+          "current_balance": 250000000,
           "currency": "IDR",
           "icon": null,
           "color": null,
@@ -828,16 +856,33 @@
           "is_excluded_from_total": false,
           "account_number": null,
           "notes": null,
-          "created_at": "2026-01-18T05:11:32.98027+00:00",
-          "updated_at": "2026-01-18T05:11:34.184796+00:00"
+          "created_at": "2026-01-18T16:49:44.86259+00:00",
+          "updated_at": "2026-01-18T16:49:44.86259+00:00"
         },
         {
-          "id": 13,
+          "id": 36,
+          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
+          "name": "BCA Priority",
+          "type": "bank",
+          "initial_balance": 150000000,
+          "current_balance": 13950000,
+          "currency": "IDR",
+          "icon": null,
+          "color": null,
+          "is_active": true,
+          "is_excluded_from_total": false,
+          "account_number": null,
+          "notes": null,
+          "created_at": "2026-01-18T16:49:44.86259+00:00",
+          "updated_at": "2026-01-23T16:32:46.986051+00:00"
+        },
+        {
+          "id": 38,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
           "name": "Cash Wallet",
           "type": "cash",
-          "initial_balance": 1500000,
-          "current_balance": 20447545.93853832,
+          "initial_balance": 5000000,
+          "current_balance": 49084626.01917384,
           "currency": "IDR",
           "icon": null,
           "color": null,
@@ -845,15 +890,15 @@
           "is_excluded_from_total": false,
           "account_number": null,
           "notes": null,
-          "created_at": "2026-01-18T05:11:32.98027+00:00",
-          "updated_at": "2026-01-18T05:11:34.184796+00:00"
+          "created_at": "2026-01-18T16:49:44.86259+00:00",
+          "updated_at": "2026-01-18T16:49:46.427961+00:00"
         }
       ],
       "foreign_keys": [],
       "indexes": []
     },
     {
-      "name": "projects",
+      "name": "tasks",
       "row_count": 3,
       "columns": [
         {
@@ -861,9 +906,9 @@
           "type": "number",
           "nullable": false,
           "sample_values": [
-            8,
-            10,
-            9
+            29,
+            30,
+            31
           ]
         },
         {
@@ -877,43 +922,23 @@
           ]
         },
         {
-          "name": "name",
+          "name": "title",
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "Home Renovation",
-            "New PC Build",
-            "Bali Trip"
+            "Japanese Visa Application",
+            "Renew Car Insurance",
+            "666"
           ]
         },
         {
-          "name": "description",
+          "name": "priority",
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "Kitchen and living room",
-            "Workstation upgrade",
-            "End of year vacation"
-          ]
-        },
-        {
-          "name": "total_budget",
-          "type": "number",
-          "nullable": false,
-          "sample_values": [
-            50000000,
-            25000000,
-            15000000
-          ]
-        },
-        {
-          "name": "spent_amount",
-          "type": "number",
-          "nullable": false,
-          "sample_values": [
-            20359859.761051618,
-            14146769.891259,
-            21365073.772517543
+            "urgent",
+            "high",
+            "medium"
           ]
         },
         {
@@ -921,19 +946,9 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "in_progress",
-            "completed",
-            "planning"
-          ]
-        },
-        {
-          "name": "start_date",
-          "type": "nullable",
-          "nullable": true,
-          "sample_values": [
-            null,
-            null,
-            null
+            "todo",
+            "done",
+            "todo"
           ]
         },
         {
@@ -941,33 +956,23 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "2026-06-30",
-            "2026-02-28",
-            "2026-12-20"
+            "2025-10-01",
+            "2025-06-15",
+            "2026-01-20"
           ]
         },
         {
-          "name": "completion_date",
+          "name": "notes",
           "type": "nullable",
           "nullable": true,
           "sample_values": [
             null,
             null,
-            null
+            ""
           ]
         },
         {
-          "name": "priority",
-          "type": "number",
-          "nullable": false,
-          "sample_values": [
-            0,
-            0,
-            0
-          ]
-        },
-        {
-          "name": "color",
+          "name": "completed_at",
           "type": "nullable",
           "nullable": true,
           "sample_values": [
@@ -981,9 +986,9 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "2026-01-18T05:11:33.135316+00:00",
-            "2026-01-18T05:11:33.135316+00:00",
-            "2026-01-18T05:11:33.135316+00:00"
+            "2026-01-18T16:49:47.029206+00:00",
+            "2026-01-18T16:49:47.029206+00:00",
+            "2026-01-18T17:47:41.762129+00:00"
           ]
         },
         {
@@ -991,355 +996,19 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "2026-01-18T05:11:34.184796+00:00",
-            "2026-01-18T05:11:34.184796+00:00",
-            "2026-01-18T05:11:34.184796+00:00"
-          ]
-        }
-      ],
-      "sample_rows": [
-        {
-          "id": 8,
-          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "name": "Home Renovation",
-          "description": "Kitchen and living room",
-          "total_budget": 50000000,
-          "spent_amount": 20359859.761051618,
-          "status": "in_progress",
-          "start_date": null,
-          "deadline": "2026-06-30",
-          "completion_date": null,
-          "priority": 0,
-          "color": null,
-          "created_at": "2026-01-18T05:11:33.135316+00:00",
-          "updated_at": "2026-01-18T05:11:34.184796+00:00"
-        },
-        {
-          "id": 10,
-          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "name": "New PC Build",
-          "description": "Workstation upgrade",
-          "total_budget": 25000000,
-          "spent_amount": 14146769.891259,
-          "status": "completed",
-          "start_date": null,
-          "deadline": "2026-02-28",
-          "completion_date": null,
-          "priority": 0,
-          "color": null,
-          "created_at": "2026-01-18T05:11:33.135316+00:00",
-          "updated_at": "2026-01-18T05:11:34.184796+00:00"
-        },
-        {
-          "id": 9,
-          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "name": "Bali Trip",
-          "description": "End of year vacation",
-          "total_budget": 15000000,
-          "spent_amount": 21365073.772517543,
-          "status": "planning",
-          "start_date": null,
-          "deadline": "2026-12-20",
-          "completion_date": null,
-          "priority": 0,
-          "color": null,
-          "created_at": "2026-01-18T05:11:33.135316+00:00",
-          "updated_at": "2026-01-18T05:11:34.184796+00:00"
-        }
-      ],
-      "foreign_keys": [],
-      "indexes": []
-    },
-    {
-      "name": "debts",
-      "row_count": 3,
-      "columns": [
-        {
-          "name": "id",
-          "type": "number",
-          "nullable": false,
-          "sample_values": [
-            8,
-            9,
-            7
+            "2026-01-18T16:49:47.029206+00:00",
+            "2026-01-18T16:49:47.029206+00:00",
+            "2026-01-18T17:47:41.762129+00:00"
           ]
         },
         {
-          "name": "user_id",
-          "type": "string",
-          "nullable": false,
-          "sample_values": [
-            "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-            "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-            "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda"
-          ]
-        },
-        {
-          "name": "name",
-          "type": "string",
-          "nullable": false,
-          "sample_values": [
-            "KPR House",
-            "Personal Loan",
-            "Car Loan"
-          ]
-        },
-        {
-          "name": "creditor",
-          "type": "string",
-          "nullable": false,
-          "sample_values": [
-            "BTN",
-            "Friend",
-            "BCA Finance"
-          ]
-        },
-        {
-          "name": "total_amount",
-          "type": "number",
-          "nullable": false,
-          "sample_values": [
-            850000000,
-            5000000,
-            150000000
-          ]
-        },
-        {
-          "name": "remaining_amount",
-          "type": "number",
-          "nullable": false,
-          "sample_values": [
-            750000000,
-            2000000,
-            43000000
-          ]
-        },
-        {
-          "name": "monthly_payment",
-          "type": "number",
-          "nullable": false,
-          "sample_values": [
-            5500000,
-            1000000,
-            3500000
-          ]
-        },
-        {
-          "name": "interest_rate",
-          "type": "number",
-          "nullable": false,
-          "sample_values": [
-            0,
-            0,
-            0
-          ]
-        },
-        {
-          "name": "start_date",
+          "name": "category_id",
           "type": "nullable",
           "nullable": true,
           "sample_values": [
             null,
             null,
-            null
-          ]
-        },
-        {
-          "name": "due_date",
-          "type": "string",
-          "nullable": false,
-          "sample_values": [
-            "2026-02-10",
-            "2026-01-30",
-            "2026-02-25"
-          ]
-        },
-        {
-          "name": "is_paid",
-          "type": "boolean",
-          "nullable": false,
-          "sample_values": [
-            false,
-            false,
-            false
-          ]
-        },
-        {
-          "name": "notes",
-          "type": "nullable",
-          "nullable": true,
-          "sample_values": [
-            null,
-            null,
-            null
-          ]
-        },
-        {
-          "name": "created_at",
-          "type": "string",
-          "nullable": false,
-          "sample_values": [
-            "2026-01-18T05:11:33.314972+00:00",
-            "2026-01-18T05:11:33.314972+00:00",
-            "2026-01-18T05:11:33.314972+00:00"
-          ]
-        },
-        {
-          "name": "updated_at",
-          "type": "string",
-          "nullable": false,
-          "sample_values": [
-            "2026-01-18T05:11:33.314972+00:00",
-            "2026-01-18T05:11:33.314972+00:00",
-            "2026-01-18T05:11:34.184796+00:00"
-          ]
-        }
-      ],
-      "sample_rows": [
-        {
-          "id": 8,
-          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "name": "KPR House",
-          "creditor": "BTN",
-          "total_amount": 850000000,
-          "remaining_amount": 750000000,
-          "monthly_payment": 5500000,
-          "interest_rate": 0,
-          "start_date": null,
-          "due_date": "2026-02-10",
-          "is_paid": false,
-          "notes": null,
-          "created_at": "2026-01-18T05:11:33.314972+00:00",
-          "updated_at": "2026-01-18T05:11:33.314972+00:00"
-        },
-        {
-          "id": 9,
-          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "name": "Personal Loan",
-          "creditor": "Friend",
-          "total_amount": 5000000,
-          "remaining_amount": 2000000,
-          "monthly_payment": 1000000,
-          "interest_rate": 0,
-          "start_date": null,
-          "due_date": "2026-01-30",
-          "is_paid": false,
-          "notes": null,
-          "created_at": "2026-01-18T05:11:33.314972+00:00",
-          "updated_at": "2026-01-18T05:11:33.314972+00:00"
-        },
-        {
-          "id": 7,
-          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "name": "Car Loan",
-          "creditor": "BCA Finance",
-          "total_amount": 150000000,
-          "remaining_amount": 43000000,
-          "monthly_payment": 3500000,
-          "interest_rate": 0,
-          "start_date": null,
-          "due_date": "2026-02-25",
-          "is_paid": false,
-          "notes": null,
-          "created_at": "2026-01-18T05:11:33.314972+00:00",
-          "updated_at": "2026-01-18T05:11:34.184796+00:00"
-        }
-      ],
-      "foreign_keys": [],
-      "indexes": []
-    },
-    {
-      "name": "recurring_transactions",
-      "row_count": 3,
-      "columns": [
-        {
-          "name": "id",
-          "type": "number",
-          "nullable": false,
-          "sample_values": [
-            1,
-            2,
-            3
-          ]
-        },
-        {
-          "name": "user_id",
-          "type": "string",
-          "nullable": false,
-          "sample_values": [
-            "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-            "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-            "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda"
-          ]
-        },
-        {
-          "name": "type",
-          "type": "string",
-          "nullable": false,
-          "sample_values": [
-            "income",
-            "expense",
-            "expense"
-          ]
-        },
-        {
-          "name": "amount",
-          "type": "number",
-          "nullable": false,
-          "sample_values": [
-            15000000,
-            186000,
-            350000
-          ]
-        },
-        {
-          "name": "description",
-          "type": "string",
-          "nullable": false,
-          "sample_values": [
-            "Monthly Salary",
-            "Netflix",
-            "Internet Bill"
-          ]
-        },
-        {
-          "name": "notes",
-          "type": "nullable",
-          "nullable": true,
-          "sample_values": [
-            null,
-            null,
-            null
-          ]
-        },
-        {
-          "name": "wallet_id",
-          "type": "number",
-          "nullable": false,
-          "sample_values": [
-            11,
-            15,
-            11
-          ]
-        },
-        {
-          "name": "to_wallet_id",
-          "type": "nullable",
-          "nullable": true,
-          "sample_values": [
-            null,
-            null,
-            null
-          ]
-        },
-        {
-          "name": "item_id",
-          "type": "nullable",
-          "nullable": true,
-          "sample_values": [
-            null,
-            null,
-            null
+            14
           ]
         },
         {
@@ -1353,176 +1022,77 @@
           ]
         },
         {
-          "name": "frequency",
-          "type": "string",
-          "nullable": false,
-          "sample_values": [
-            "monthly",
-            "monthly",
-            "monthly"
-          ]
-        },
-        {
-          "name": "start_date",
-          "type": "string",
-          "nullable": false,
-          "sample_values": [
-            "2026-01-25",
-            "2026-01-01",
-            "2026-01-10"
-          ]
-        },
-        {
-          "name": "end_date",
+          "name": "submission_id",
           "type": "nullable",
           "nullable": true,
           "sample_values": [
             null,
             null,
             null
-          ]
-        },
-        {
-          "name": "next_occurrence",
-          "type": "string",
-          "nullable": false,
-          "sample_values": [
-            "2026-02-25",
-            "2026-02-01",
-            "2026-02-10"
-          ]
-        },
-        {
-          "name": "last_generated_date",
-          "type": "nullable",
-          "nullable": true,
-          "sample_values": [
-            null,
-            null,
-            null
-          ]
-        },
-        {
-          "name": "is_active",
-          "type": "boolean",
-          "nullable": false,
-          "sample_values": [
-            true,
-            true,
-            true
-          ]
-        },
-        {
-          "name": "auto_generate",
-          "type": "boolean",
-          "nullable": false,
-          "sample_values": [
-            true,
-            true,
-            true
-          ]
-        },
-        {
-          "name": "created_at",
-          "type": "string",
-          "nullable": false,
-          "sample_values": [
-            "2026-01-18T05:11:34.794181+00:00",
-            "2026-01-18T05:11:34.794181+00:00",
-            "2026-01-18T05:11:34.794181+00:00"
-          ]
-        },
-        {
-          "name": "updated_at",
-          "type": "string",
-          "nullable": false,
-          "sample_values": [
-            "2026-01-18T05:11:34.794181+00:00",
-            "2026-01-18T05:11:34.794181+00:00",
-            "2026-01-18T05:11:34.794181+00:00"
           ]
         }
       ],
       "sample_rows": [
         {
-          "id": 1,
+          "id": 29,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "type": "income",
-          "amount": 15000000,
-          "description": "Monthly Salary",
+          "title": "Japanese Visa Application",
+          "priority": "urgent",
+          "status": "todo",
+          "deadline": "2025-10-01",
           "notes": null,
-          "wallet_id": 11,
-          "to_wallet_id": null,
-          "item_id": null,
+          "completed_at": null,
+          "created_at": "2026-01-18T16:49:47.029206+00:00",
+          "updated_at": "2026-01-18T16:49:47.029206+00:00",
+          "category_id": null,
           "project_id": null,
-          "frequency": "monthly",
-          "start_date": "2026-01-25",
-          "end_date": null,
-          "next_occurrence": "2026-02-25",
-          "last_generated_date": null,
-          "is_active": true,
-          "auto_generate": true,
-          "created_at": "2026-01-18T05:11:34.794181+00:00",
-          "updated_at": "2026-01-18T05:11:34.794181+00:00"
+          "submission_id": null
         },
         {
-          "id": 2,
+          "id": 30,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "type": "expense",
-          "amount": 186000,
-          "description": "Netflix",
+          "title": "Renew Car Insurance",
+          "priority": "high",
+          "status": "done",
+          "deadline": "2025-06-15",
           "notes": null,
-          "wallet_id": 15,
-          "to_wallet_id": null,
-          "item_id": null,
+          "completed_at": null,
+          "created_at": "2026-01-18T16:49:47.029206+00:00",
+          "updated_at": "2026-01-18T16:49:47.029206+00:00",
+          "category_id": null,
           "project_id": null,
-          "frequency": "monthly",
-          "start_date": "2026-01-01",
-          "end_date": null,
-          "next_occurrence": "2026-02-01",
-          "last_generated_date": null,
-          "is_active": true,
-          "auto_generate": true,
-          "created_at": "2026-01-18T05:11:34.794181+00:00",
-          "updated_at": "2026-01-18T05:11:34.794181+00:00"
+          "submission_id": null
         },
         {
-          "id": 3,
+          "id": 31,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "type": "expense",
-          "amount": 350000,
-          "description": "Internet Bill",
-          "notes": null,
-          "wallet_id": 11,
-          "to_wallet_id": null,
-          "item_id": null,
+          "title": "666",
+          "priority": "medium",
+          "status": "todo",
+          "deadline": "2026-01-20",
+          "notes": "",
+          "completed_at": null,
+          "created_at": "2026-01-18T17:47:41.762129+00:00",
+          "updated_at": "2026-01-18T17:47:41.762129+00:00",
+          "category_id": 14,
           "project_id": null,
-          "frequency": "monthly",
-          "start_date": "2026-01-10",
-          "end_date": null,
-          "next_occurrence": "2026-02-10",
-          "last_generated_date": null,
-          "is_active": true,
-          "auto_generate": true,
-          "created_at": "2026-01-18T05:11:34.794181+00:00",
-          "updated_at": "2026-01-18T05:11:34.794181+00:00"
+          "submission_id": null
         }
       ],
       "foreign_keys": [],
       "indexes": []
     },
     {
-      "name": "assets",
-      "row_count": 3,
+      "name": "projects",
+      "row_count": 2,
       "columns": [
         {
           "name": "id",
           "type": "number",
           "nullable": false,
           "sample_values": [
-            8,
-            9,
-            10
+            23,
+            24
           ]
         },
         {
@@ -1531,6 +1101,341 @@
           "nullable": false,
           "sample_values": [
             "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
+            "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "nullable": false,
+          "sample_values": [
+            "Home Studio",
+            "Japan Trip 2025"
+          ]
+        },
+        {
+          "name": "description",
+          "type": "nullable",
+          "nullable": true,
+          "sample_values": [
+            null,
+            null
+          ]
+        },
+        {
+          "name": "total_budget",
+          "type": "number",
+          "nullable": false,
+          "sample_values": [
+            100000000,
+            60000000
+          ]
+        },
+        {
+          "name": "spent_amount",
+          "type": "number",
+          "nullable": false,
+          "sample_values": [
+            0,
+            0
+          ]
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "nullable": false,
+          "sample_values": [
+            "in_progress",
+            "planning"
+          ]
+        },
+        {
+          "name": "start_date",
+          "type": "nullable",
+          "nullable": true,
+          "sample_values": [
+            null,
+            null
+          ]
+        },
+        {
+          "name": "deadline",
+          "type": "string",
+          "nullable": false,
+          "sample_values": [
+            "2025-08-15",
+            "2025-11-20"
+          ]
+        },
+        {
+          "name": "completion_date",
+          "type": "nullable",
+          "nullable": true,
+          "sample_values": [
+            null,
+            null
+          ]
+        },
+        {
+          "name": "priority",
+          "type": "number",
+          "nullable": false,
+          "sample_values": [
+            0,
+            0
+          ]
+        },
+        {
+          "name": "color",
+          "type": "nullable",
+          "nullable": true,
+          "sample_values": [
+            null,
+            null
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "nullable": false,
+          "sample_values": [
+            "2026-01-18T16:49:45.022008+00:00",
+            "2026-01-18T16:49:45.022008+00:00"
+          ]
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "nullable": false,
+          "sample_values": [
+            "2026-01-18T16:49:45.022008+00:00",
+            "2026-01-18T16:49:45.022008+00:00"
+          ]
+        }
+      ],
+      "sample_rows": [
+        {
+          "id": 23,
+          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
+          "name": "Home Studio",
+          "description": null,
+          "total_budget": 100000000,
+          "spent_amount": 0,
+          "status": "in_progress",
+          "start_date": null,
+          "deadline": "2025-08-15",
+          "completion_date": null,
+          "priority": 0,
+          "color": null,
+          "created_at": "2026-01-18T16:49:45.022008+00:00",
+          "updated_at": "2026-01-18T16:49:45.022008+00:00"
+        },
+        {
+          "id": 24,
+          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
+          "name": "Japan Trip 2025",
+          "description": null,
+          "total_budget": 60000000,
+          "spent_amount": 0,
+          "status": "planning",
+          "start_date": null,
+          "deadline": "2025-11-20",
+          "completion_date": null,
+          "priority": 0,
+          "color": null,
+          "created_at": "2026-01-18T16:49:45.022008+00:00",
+          "updated_at": "2026-01-18T16:49:45.022008+00:00"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": []
+    },
+    {
+      "name": "debts",
+      "row_count": 2,
+      "columns": [
+        {
+          "name": "id",
+          "type": "number",
+          "nullable": false,
+          "sample_values": [
+            22,
+            21
+          ]
+        },
+        {
+          "name": "user_id",
+          "type": "string",
+          "nullable": false,
+          "sample_values": [
+            "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
+            "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "nullable": false,
+          "sample_values": [
+            "KPR Apartment",
+            "Car Loan"
+          ]
+        },
+        {
+          "name": "creditor",
+          "type": "string",
+          "nullable": false,
+          "sample_values": [
+            "Bank Mandiri",
+            "BCA Finance"
+          ]
+        },
+        {
+          "name": "total_amount",
+          "type": "number",
+          "nullable": false,
+          "sample_values": [
+            1200000000,
+            350000000
+          ]
+        },
+        {
+          "name": "remaining_amount",
+          "type": "number",
+          "nullable": false,
+          "sample_values": [
+            806000000,
+            0
+          ]
+        },
+        {
+          "name": "monthly_payment",
+          "type": "number",
+          "nullable": false,
+          "sample_values": [
+            12000000,
+            7500000
+          ]
+        },
+        {
+          "name": "interest_rate",
+          "type": "number",
+          "nullable": false,
+          "sample_values": [
+            0,
+            0
+          ]
+        },
+        {
+          "name": "start_date",
+          "type": "nullable",
+          "nullable": true,
+          "sample_values": [
+            null,
+            null
+          ]
+        },
+        {
+          "name": "due_date",
+          "type": "string",
+          "nullable": false,
+          "sample_values": [
+            "2025-01-05",
+            "2025-01-15"
+          ]
+        },
+        {
+          "name": "is_paid",
+          "type": "boolean",
+          "nullable": false,
+          "sample_values": [
+            false,
+            true
+          ]
+        },
+        {
+          "name": "notes",
+          "type": "nullable",
+          "nullable": true,
+          "sample_values": [
+            null,
+            null
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "nullable": false,
+          "sample_values": [
+            "2026-01-18T16:49:45.177128+00:00",
+            "2026-01-18T16:49:45.177128+00:00"
+          ]
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "nullable": false,
+          "sample_values": [
+            "2026-01-18T16:49:46.427961+00:00",
+            "2026-01-23T16:11:56.391167+00:00"
+          ]
+        }
+      ],
+      "sample_rows": [
+        {
+          "id": 22,
+          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
+          "name": "KPR Apartment",
+          "creditor": "Bank Mandiri",
+          "total_amount": 1200000000,
+          "remaining_amount": 806000000,
+          "monthly_payment": 12000000,
+          "interest_rate": 0,
+          "start_date": null,
+          "due_date": "2025-01-05",
+          "is_paid": false,
+          "notes": null,
+          "created_at": "2026-01-18T16:49:45.177128+00:00",
+          "updated_at": "2026-01-18T16:49:46.427961+00:00"
+        },
+        {
+          "id": 21,
+          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
+          "name": "Car Loan",
+          "creditor": "BCA Finance",
+          "total_amount": 350000000,
+          "remaining_amount": 0,
+          "monthly_payment": 7500000,
+          "interest_rate": 0,
+          "start_date": null,
+          "due_date": "2025-01-15",
+          "is_paid": true,
+          "notes": null,
+          "created_at": "2026-01-18T16:49:45.177128+00:00",
+          "updated_at": "2026-01-23T16:11:56.391167+00:00"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": []
+    },
+    {
+      "name": "assets",
+      "row_count": 2,
+      "columns": [
+        {
+          "name": "id",
+          "type": "number",
+          "nullable": false,
+          "sample_values": [
+            17,
+            18
+          ]
+        },
+        {
+          "name": "user_id",
+          "type": "string",
+          "nullable": false,
+          "sample_values": [
             "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
             "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda"
           ]
@@ -1541,7 +1446,6 @@
           "nullable": false,
           "sample_values": [
             "stock",
-            "stock",
             "crypto"
           ]
         },
@@ -1551,7 +1455,6 @@
           "nullable": false,
           "sample_values": [
             "BBCA.JK",
-            "TLKM.JK",
             "BTC"
           ]
         },
@@ -1561,7 +1464,6 @@
           "nullable": false,
           "sample_values": [
             "Bank Central Asia",
-            "Telkom Indonesia",
             "Bitcoin"
           ]
         },
@@ -1571,7 +1473,6 @@
           "nullable": false,
           "sample_values": [
             5000,
-            2000,
             0.05
           ]
         },
@@ -1581,7 +1482,6 @@
           "nullable": false,
           "sample_values": [
             9200,
-            3800,
             950000000
           ]
         },
@@ -1591,7 +1491,6 @@
           "nullable": false,
           "sample_values": [
             10120,
-            4180,
             1045000000.0000001
           ]
         },
@@ -1600,7 +1499,6 @@
           "type": "nullable",
           "nullable": true,
           "sample_values": [
-            null,
             null,
             null
           ]
@@ -1611,7 +1509,6 @@
           "nullable": true,
           "sample_values": [
             null,
-            null,
             null
           ]
         },
@@ -1620,7 +1517,6 @@
           "type": "nullable",
           "nullable": true,
           "sample_values": [
-            null,
             null,
             null
           ]
@@ -1631,7 +1527,6 @@
           "nullable": false,
           "sample_values": [
             46000000,
-            7600000,
             47500000
           ]
         },
@@ -1641,7 +1536,6 @@
           "nullable": false,
           "sample_values": [
             50600000,
-            8360000,
             52250000.00000001
           ]
         },
@@ -1651,18 +1545,16 @@
           "nullable": false,
           "sample_values": [
             4600000,
-            760000,
             4750000.000000005
           ]
         },
         {
           "name": "last_price_update",
-          "type": "nullable",
-          "nullable": true,
+          "type": "string",
+          "nullable": false,
           "sample_values": [
-            null,
-            null,
-            null
+            "2026-01-18T16:49:19.69+00:00",
+            "2026-01-18T16:49:19.69+00:00"
           ]
         },
         {
@@ -1670,9 +1562,8 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "2026-01-18T05:11:34.404811+00:00",
-            "2026-01-18T05:11:34.404811+00:00",
-            "2026-01-18T05:11:34.404811+00:00"
+            "2026-01-18T16:49:46.816996+00:00",
+            "2026-01-18T16:49:46.816996+00:00"
           ]
         },
         {
@@ -1680,15 +1571,14 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "2026-01-18T05:11:34.404811+00:00",
-            "2026-01-18T05:11:34.404811+00:00",
-            "2026-01-18T05:11:34.404811+00:00"
+            "2026-01-18T16:49:46.816996+00:00",
+            "2026-01-18T16:49:46.816996+00:00"
           ]
         }
       ],
       "sample_rows": [
         {
-          "id": 8,
+          "id": 17,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
           "type": "stock",
           "symbol": "BBCA.JK",
@@ -1702,31 +1592,12 @@
           "total_cost": 46000000,
           "current_value": 50600000,
           "unrealized_gain": 4600000,
-          "last_price_update": null,
-          "created_at": "2026-01-18T05:11:34.404811+00:00",
-          "updated_at": "2026-01-18T05:11:34.404811+00:00"
+          "last_price_update": "2026-01-18T16:49:19.69+00:00",
+          "created_at": "2026-01-18T16:49:46.816996+00:00",
+          "updated_at": "2026-01-18T16:49:46.816996+00:00"
         },
         {
-          "id": 9,
-          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "type": "stock",
-          "symbol": "TLKM.JK",
-          "name": "Telkom Indonesia",
-          "quantity": 2000,
-          "avg_buy_price": 3800,
-          "current_price": 4180,
-          "purchase_date": null,
-          "notes": null,
-          "portfolio_name": null,
-          "total_cost": 7600000,
-          "current_value": 8360000,
-          "unrealized_gain": 760000,
-          "last_price_update": null,
-          "created_at": "2026-01-18T05:11:34.404811+00:00",
-          "updated_at": "2026-01-18T05:11:34.404811+00:00"
-        },
-        {
-          "id": 10,
+          "id": 18,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
           "type": "crypto",
           "symbol": "BTC",
@@ -1740,9 +1611,9 @@
           "total_cost": 47500000,
           "current_value": 52250000.00000001,
           "unrealized_gain": 4750000.000000005,
-          "last_price_update": null,
-          "created_at": "2026-01-18T05:11:34.404811+00:00",
-          "updated_at": "2026-01-18T05:11:34.404811+00:00"
+          "last_price_update": "2026-01-18T16:49:19.69+00:00",
+          "created_at": "2026-01-18T16:49:46.816996+00:00",
+          "updated_at": "2026-01-18T16:49:46.816996+00:00"
         }
       ],
       "foreign_keys": [],
@@ -1757,8 +1628,8 @@
           "type": "number",
           "nullable": false,
           "sample_values": [
-            5,
-            6
+            14,
+            15
           ]
         },
         {
@@ -1775,8 +1646,8 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "Kegiatan Pribadi",
-            "Kegiatan Kantor"
+            "hobby",
+            "ijin"
           ]
         },
         {
@@ -1802,43 +1673,42 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "2026-01-18T05:12:21.34825+00:00",
-            "2026-01-18T05:12:21.34825+00:00"
+            "2026-01-18T17:47:15.130089+00:00",
+            "2026-01-18T17:47:23.261666+00:00"
           ]
         }
       ],
       "sample_rows": [
         {
-          "id": 5,
+          "id": 14,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "name": "Kegiatan Pribadi",
+          "name": "hobby",
           "icon": null,
           "color": null,
-          "created_at": "2026-01-18T05:12:21.34825+00:00"
+          "created_at": "2026-01-18T17:47:15.130089+00:00"
         },
         {
-          "id": 6,
+          "id": 15,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "name": "Kegiatan Kantor",
+          "name": "ijin",
           "icon": null,
           "color": null,
-          "created_at": "2026-01-18T05:12:21.34825+00:00"
+          "created_at": "2026-01-18T17:47:23.261666+00:00"
         }
       ],
       "foreign_keys": [],
       "indexes": []
     },
     {
-      "name": "tasks",
-      "row_count": 2,
+      "name": "budgets",
+      "row_count": 1,
       "columns": [
         {
           "name": "id",
           "type": "number",
           "nullable": false,
           "sample_values": [
-            14,
-            18
+            13
           ]
         },
         {
@@ -1846,44 +1716,47 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
             "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda"
           ]
         },
         {
-          "name": "title",
-          "type": "string",
+          "name": "category_id",
+          "type": "number",
           "nullable": false,
           "sample_values": [
-            "Review Portfolio",
-            "aa"
+            92
           ]
         },
         {
-          "name": "priority",
-          "type": "string",
+          "name": "amount",
+          "type": "number",
           "nullable": false,
           "sample_values": [
-            "medium",
-            "high"
+            1000000
           ]
         },
         {
-          "name": "status",
-          "type": "string",
+          "name": "spent_amount",
+          "type": "number",
           "nullable": false,
           "sample_values": [
-            "done",
-            "todo"
+            0
           ]
         },
         {
-          "name": "deadline",
-          "type": "string",
+          "name": "month",
+          "type": "number",
           "nullable": false,
           "sample_values": [
-            "2026-02-15",
-            "2026-01-28"
+            1
+          ]
+        },
+        {
+          "name": "year",
+          "type": "number",
+          "nullable": false,
+          "sample_values": [
+            2026
           ]
         },
         {
@@ -1891,16 +1764,6 @@
           "type": "nullable",
           "nullable": true,
           "sample_values": [
-            null,
-            "aa"
-          ]
-        },
-        {
-          "name": "completed_at",
-          "type": "nullable",
-          "nullable": true,
-          "sample_values": [
-            null,
             null
           ]
         },
@@ -1909,8 +1772,7 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "2026-01-18T05:11:34.575831+00:00",
-            "2026-01-18T05:14:39.257185+00:00"
+            "2026-01-18T17:05:32.37915+00:00"
           ]
         },
         {
@@ -1918,46 +1780,22 @@
           "type": "string",
           "nullable": false,
           "sample_values": [
-            "2026-01-18T05:11:34.575831+00:00",
-            "2026-01-18T06:27:58.406287+00:00"
-          ]
-        },
-        {
-          "name": "category_id",
-          "type": "nullable",
-          "nullable": true,
-          "sample_values": [
-            null,
-            5
+            "2026-01-18T17:05:32.37915+00:00"
           ]
         }
       ],
       "sample_rows": [
         {
-          "id": 14,
+          "id": 13,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "title": "Review Portfolio",
-          "priority": "medium",
-          "status": "done",
-          "deadline": "2026-02-15",
+          "category_id": 92,
+          "amount": 1000000,
+          "spent_amount": 0,
+          "month": 1,
+          "year": 2026,
           "notes": null,
-          "completed_at": null,
-          "created_at": "2026-01-18T05:11:34.575831+00:00",
-          "updated_at": "2026-01-18T05:11:34.575831+00:00",
-          "category_id": null
-        },
-        {
-          "id": 18,
-          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "title": "aa",
-          "priority": "high",
-          "status": "todo",
-          "deadline": "2026-01-28",
-          "notes": "aa",
-          "completed_at": null,
-          "created_at": "2026-01-18T05:14:39.257185+00:00",
-          "updated_at": "2026-01-18T06:27:58.406287+00:00",
-          "category_id": 5
+          "created_at": "2026-01-18T17:05:32.37915+00:00",
+          "updated_at": "2026-01-18T17:05:32.37915+00:00"
         }
       ],
       "foreign_keys": [],
@@ -1980,7 +1818,7 @@
       "indexes": []
     },
     {
-      "name": "budgets",
+      "name": "budget_alerts",
       "row_count": 0,
       "columns": [],
       "sample_rows": [],
@@ -1988,7 +1826,7 @@
       "indexes": []
     },
     {
-      "name": "budget_alerts",
+      "name": "recurring_transactions",
       "row_count": 0,
       "columns": [],
       "sample_rows": [],
@@ -2071,26 +1909,26 @@
       ],
       "sample_data": [
         {
-          "id": 11,
+          "id": 36,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "name": "Main BCA",
+          "name": "BCA Priority",
           "type": "bank",
-          "initial_balance": 50000000,
+          "initial_balance": 150000000,
           "currency": "IDR",
           "is_active": true,
           "is_excluded_from_total": false,
-          "total_income": 180000000,
-          "total_expense": 97871703.42482816,
+          "total_income": 348000000,
+          "total_expense": 414050000,
           "total_transfer_in": 0,
-          "total_transfer_out": 35000000,
-          "current_balance": 97128296.57517184
+          "total_transfer_out": 70000000,
+          "current_balance": 13950000
         },
         {
-          "id": 12,
+          "id": 37,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "name": "Mandiri Savings",
+          "name": "Mandiri Investment",
           "type": "bank",
-          "initial_balance": 100000000,
+          "initial_balance": 250000000,
           "currency": "IDR",
           "is_active": true,
           "is_excluded_from_total": false,
@@ -2098,22 +1936,22 @@
           "total_expense": 0,
           "total_transfer_in": 0,
           "total_transfer_out": 0,
-          "current_balance": 100000000
+          "current_balance": 250000000
         },
         {
-          "id": 13,
+          "id": 38,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
           "name": "Cash Wallet",
           "type": "cash",
-          "initial_balance": 1500000,
+          "initial_balance": 5000000,
           "currency": "IDR",
           "is_active": true,
           "is_excluded_from_total": false,
           "total_income": 0,
-          "total_expense": 16052454.061461678,
-          "total_transfer_in": 35000000,
+          "total_expense": 25915373.98082616,
+          "total_transfer_in": 70000000,
           "total_transfer_out": 0,
-          "current_balance": 20447545.93853832
+          "current_balance": 49084626.01917384
         }
       ]
     },
@@ -2134,7 +1972,7 @@
         },
         {
           "name": "description",
-          "type": "string"
+          "type": "object"
         },
         {
           "name": "total_budget",
@@ -2166,58 +2004,108 @@
         },
         {
           "name": "last_transaction_date",
-          "type": "string"
+          "type": "object"
         }
       ],
       "sample_data": [
         {
-          "id": 8,
+          "id": 23,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "name": "Home Renovation",
-          "description": "Kitchen and living room",
-          "total_budget": 50000000,
+          "name": "Home Studio",
+          "description": null,
+          "total_budget": 100000000,
           "status": "in_progress",
-          "deadline": "2026-06-30",
-          "actual_spent": 20359859.761051618,
-          "remaining_budget": 29640140.238948382,
-          "budget_percentage_used": 40.72,
-          "transaction_count": 13,
-          "last_transaction_date": "2026-10-29"
+          "deadline": "2025-08-15",
+          "actual_spent": 0,
+          "remaining_budget": 100000000,
+          "budget_percentage_used": 0,
+          "transaction_count": 0,
+          "last_transaction_date": null
         },
         {
-          "id": 9,
+          "id": 24,
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "name": "Bali Trip",
-          "description": "End of year vacation",
-          "total_budget": 15000000,
+          "name": "Japan Trip 2025",
+          "description": null,
+          "total_budget": 60000000,
           "status": "planning",
-          "deadline": "2026-12-20",
-          "actual_spent": 21365073.772517543,
-          "remaining_budget": -6365073.772517542,
-          "budget_percentage_used": 142.43,
-          "transaction_count": 14,
-          "last_transaction_date": "2026-12-22"
-        },
-        {
-          "id": 10,
-          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "name": "New PC Build",
-          "description": "Workstation upgrade",
-          "total_budget": 25000000,
-          "status": "completed",
-          "deadline": "2026-02-28",
-          "actual_spent": 14146769.891259,
-          "remaining_budget": 10853230.108741,
-          "budget_percentage_used": 56.59,
-          "transaction_count": 10,
-          "last_transaction_date": "2026-11-08"
+          "deadline": "2025-11-20",
+          "actual_spent": 0,
+          "remaining_budget": 60000000,
+          "budget_percentage_used": 0,
+          "transaction_count": 0,
+          "last_transaction_date": null
         }
       ]
     },
     {
       "name": "budget_tracking_view",
-      "columns": [],
-      "sample_data": []
+      "columns": [
+        {
+          "name": "id",
+          "type": "number"
+        },
+        {
+          "name": "user_id",
+          "type": "string"
+        },
+        {
+          "name": "category_id",
+          "type": "number"
+        },
+        {
+          "name": "category_name",
+          "type": "string"
+        },
+        {
+          "name": "category_icon",
+          "type": "string"
+        },
+        {
+          "name": "category_color",
+          "type": "string"
+        },
+        {
+          "name": "budget_amount",
+          "type": "number"
+        },
+        {
+          "name": "month",
+          "type": "number"
+        },
+        {
+          "name": "year",
+          "type": "number"
+        },
+        {
+          "name": "spent_amount",
+          "type": "number"
+        },
+        {
+          "name": "percentage_used",
+          "type": "number"
+        },
+        {
+          "name": "is_exceeded",
+          "type": "boolean"
+        }
+      ],
+      "sample_data": [
+        {
+          "id": 13,
+          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
+          "category_id": 92,
+          "category_name": "Food & Dining",
+          "category_icon": "Utensils",
+          "category_color": "#ef4444",
+          "budget_amount": 1000000,
+          "month": 1,
+          "year": 2026,
+          "spent_amount": 50000,
+          "percentage_used": 5,
+          "is_exceeded": false
+        }
+      ]
     },
     {
       "name": "net_worth_view",
@@ -2232,19 +2120,31 @@
         },
         {
           "name": "total_liabilities",
-          "type": "object"
+          "type": "number"
         },
         {
           "name": "net_worth",
-          "type": "object"
+          "type": "number"
         }
       ],
       "sample_data": [
         {
-          "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
-          "total_liquid_assets": 218075842.51371017,
-          "total_liabilities": null,
-          "net_worth": null
+          "user_id": "28824703-3eac-48b2-9483-d6e144b87929",
+          "total_liquid_assets": 0,
+          "total_liabilities": 0,
+          "net_worth": 0
+        },
+        {
+          "user_id": "2950b23e-dd8f-4012-a032-7fda9cd7f801",
+          "total_liquid_assets": 0,
+          "total_liabilities": 0,
+          "net_worth": 0
+        },
+        {
+          "user_id": "752c9f09-58e9-448f-916e-7b225386036d",
+          "total_liquid_assets": 0,
+          "total_liabilities": 0,
+          "net_worth": 0
         }
       ]
     },
@@ -2299,10 +2199,10 @@
           "user_id": "fa3c5dfb-3d2d-4042-8e5f-f7eb0950edda",
           "portfolio_name": null,
           "type": "stock",
-          "asset_count": 2,
-          "total_invested": 53600000,
-          "current_value": 58960000,
-          "total_unrealized_gain": 5360000,
+          "asset_count": 1,
+          "total_invested": 46000000,
+          "current_value": 50600000,
+          "total_unrealized_gain": 4600000,
           "return_percentage": 10
         }
       ]
