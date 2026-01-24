@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
+import { checkBudgetsAndCreateAlerts } from '@/lib/budget-alert-processor';
 
 // Dashboard Components
 import MetricCard from '@/components/dashboard/MetricCard';
@@ -27,8 +28,12 @@ import RecentTransactions from '@/components/dashboard/RecentTransactions';
 import BankAccounts from '@/components/dashboard/BankAccounts';
 import PriorityGoals from '@/components/dashboard/PriorityGoals';
 import GrowthIndex from '@/components/dashboard/GrowthIndex';
+import GoalProgressCard from '@/components/dashboard/GoalProgressCard';
+import { useGlobalData } from '@/context/GlobalDataContext';
 
 export default function Dashboard() {
+  const { wallets, debts, recurringTransactions, budgetAlerts, refreshData } = useGlobalData();
+
   const [stats, setStats] = useState({
     income: 0,
     expense: 0,
@@ -41,10 +46,11 @@ export default function Dashboard() {
     totalAssets: 0,
     totalDebt: 0
   });
-  const [wallets, setWallets] = useState<any[]>([]);
   const [recentTrx, setRecentTrx] = useState<any[]>([]);
   const [upcomingTasks, setUpcomingTasks] = useState<any[]>([]);
+  const [goals, setGoals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [checkingBudgets, setCheckingBudgets] = useState(false);
   
   // Activity Modal State
   const [selectedBankForActivity, setSelectedBankForActivity] = useState<any>(null);
@@ -65,8 +71,77 @@ export default function Dashboard() {
   useBodyScrollLock(showReminders);
 
   useEffect(() => {
-    fetchDashboardData();
+    if (wallets.length > 0 || !loading) {
+        fetchDashboardData();
+    }
+  }, [wallets, debts]);
+
+  // Step 4: Client-side recurring transaction check
+  useEffect(() => {
+    const checkRecurring = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Only check once per day
+      const lastCheck = localStorage.getItem('last_recurring_check');
+      const today = new Date().toDateString();
+
+      if (lastCheck !== today) {
+        try {
+          const response = await fetch('/api/generate-recurring', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id })
+          });
+
+          const result = await response.json();
+
+          if (response.ok && result.created > 0) {
+            console.log(`Auto-generated ${result.created} recurring transaction(s)`);
+            // Refresh dashboard data to show new transactions
+            fetchDashboardData();
+          }
+
+          localStorage.setItem('last_recurring_check', today);
+        } catch (error) {
+          console.error('Error checking recurring transactions:', error);
+        }
+      }
+    };
+
+    checkRecurring();
   }, []);
+
+  // Automatic budget checking (runs once per day)
+  useEffect(() => {
+    const checkBudgets = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Only check once per day
+      const lastBudgetCheck = localStorage.getItem('last_budget_check');
+      const today = new Date().toDateString();
+
+      if (lastBudgetCheck !== today) {
+        try {
+          const result = await checkBudgetsAndCreateAlerts(user.id);
+
+          if (result.created > 0) {
+            console.log(`Created ${result.created} budget alert(s) from ${result.checked} budget(s)`);
+            // Refresh global data to show new alerts
+            refreshData();
+          }
+
+          localStorage.setItem('last_budget_check', today);
+        } catch (error) {
+          console.error('Error checking budgets:', error);
+          // Silently fail - don't disrupt user experience
+        }
+      }
+    };
+
+    checkBudgets();
+  }, [refreshData]);
 
   // Effect for Chart Data specifically when filters change
   useEffect(() => {
@@ -78,15 +153,13 @@ export default function Dashboard() {
       setLoading(true);
 
       const [
-        { data: walletsView },
         { data: netWorthView },
         { data: portfolioView },
         { data: recentTransactions },
         { data: tasks },
         { data: allTransactions },
-        { data: debtsData }
+        { data: activeGoals }
       ] = await Promise.all([
-        supabase.from('wallet_balances_view').select('*'),
         supabase.from('net_worth_view').select('*').maybeSingle(),
         supabase.from('portfolio_summary_view').select('*'),
         supabase.from('transactions')
@@ -97,11 +170,14 @@ export default function Dashboard() {
         supabase.from('transactions')
           .select('wallet_id, amount, type, date')
           .gte('date', new Date(new Date().setDate(new Date().getDate() - 30)).toISOString()),
-        supabase.from('debts').select('remaining_amount')
+        supabase.from('financial_goals')
+          .select('*')
+          .eq('status', 'active')
+          .order('deadline', { ascending: true })
       ]);
 
-      const totalCash = walletsView?.reduce((acc, curr) => acc + Number(curr.current_balance), 0) || 0;
-      const loanDebt = debtsData?.reduce((acc, curr) => acc + Number(curr.remaining_amount), 0) || 0;
+      const totalCash = wallets?.reduce((acc, curr) => acc + Number(curr.current_balance || 0), 0) || 0;
+      const loanDebt = debts?.reduce((acc, curr) => acc + Number(curr.remaining_amount), 0) || 0;
       const ccDebt = Number(netWorthView?.total_liabilities) || 0;
       const totalDebt = ccDebt + loanDebt;
       const totalAssets = portfolioView?.reduce((acc, curr) => acc + Number(curr.current_value), 0) || 0;
@@ -109,7 +185,7 @@ export default function Dashboard() {
 
       setRecentTrx(recentTransactions || []);
       setUpcomingTasks(tasks?.filter(t => t.status !== 'done').slice(0, 3) || []);
-      setWallets(walletsView || []);
+      setGoals(activeGoals || []);
 
       const periodIncome = allTransactions?.filter(t => t.type === 'income').reduce((acc, t) => acc + Number(t.amount), 0) || 0;
       const periodExpense = allTransactions?.filter(t => t.type === 'expense').reduce((acc, t) => acc + Number(t.amount), 0) || 0;
@@ -235,6 +311,29 @@ export default function Dashboard() {
     fetchBankActivity(bank.id);
   };
 
+  const handleManualBudgetCheck = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    setCheckingBudgets(true);
+    try {
+      const result = await checkBudgetsAndCreateAlerts(user.id);
+      console.log(`Manual check: Created ${result.created} alert(s) from ${result.checked} budget(s)`);
+
+      if (result.created > 0) {
+        // Refresh global data to show new alerts
+        await refreshData();
+      }
+
+      // Update last check timestamp
+      localStorage.setItem('last_budget_check', new Date().toDateString());
+    } catch (error) {
+      console.error('Error checking budgets manually:', error);
+    } finally {
+      setCheckingBudgets(false);
+    }
+  };
+
   const getHealthStatus = (rate: number) => {
     if (rate >= 30) return { label: 'Excellent', color: 'text-emerald-600', bg: 'bg-emerald-50', icon: <ShieldCheck className="text-emerald-600" size={16} /> };
     if (rate >= 10) return { label: 'Stable', color: 'text-blue-600', bg: 'bg-blue-50', icon: <Target className="text-blue-600" size={16} /> };
@@ -243,6 +342,9 @@ export default function Dashboard() {
 
   const health = getHealthStatus(stats.savingsRate);
   const urgentTasks = upcomingTasks.filter(t => t.priority === 'Urgent');
+
+  // Filter critical budget alerts (threshold >= 100%)
+  const criticalAlerts = budgetAlerts.filter(alert => alert.threshold_percent >= 100).slice(0, 3);
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-20 relative">
@@ -307,6 +409,20 @@ export default function Dashboard() {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
+          {/* Manual Budget Check Button (for testing/debugging) */}
+          <button
+            onClick={handleManualBudgetCheck}
+            disabled={checkingBudgets}
+            className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-slate-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Check Budgets Now"
+          >
+            {checkingBudgets ? (
+              <div className="w-[18px] h-[18px] border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+            ) : (
+              <Target size={18} className="text-slate-600" />
+            )}
+          </button>
+
           <div className="relative">
             <button onClick={() => setShowNotifications(!showNotifications)} className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm relative hover:border-slate-300 transition-all">
               <Bell size={18} className="text-slate-600" />
@@ -328,6 +444,51 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
+
+      {/* Critical Budget Alerts Banner */}
+      {criticalAlerts.length > 0 && (
+        <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-2xl p-4 md:p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-red-100 rounded-xl shrink-0">
+              <AlertCircle className="text-red-600" size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm md:text-base font-bold text-red-900">Budget Alerts</h3>
+                <a
+                  href="/budgets"
+                  className="text-xs font-semibold text-red-600 hover:text-red-700 transition-colors"
+                >
+                  View All
+                </a>
+              </div>
+              <p className="text-xs text-red-700 mb-3">
+                {criticalAlerts.length} budget{criticalAlerts.length > 1 ? 's have' : ' has'} exceeded the limit
+              </p>
+              <div className="space-y-2">
+                {criticalAlerts.map(alert => (
+                  <div
+                    key={alert.id}
+                    className="flex items-center justify-between p-3 bg-white rounded-xl border border-red-100 shadow-sm"
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <div className="w-2 h-2 bg-red-500 rounded-full shrink-0 animate-pulse" />
+                      <p className="text-xs md:text-sm font-semibold text-slate-900 truncate">
+                        {alert.message}
+                      </p>
+                    </div>
+                    <div className="ml-3 shrink-0">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-bold">
+                        {Math.round(alert.threshold_percent)}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="py-20 text-center animate-pulse font-medium text-slate-400 text-sm">Loading Dashboard...</div>
@@ -358,6 +519,44 @@ export default function Dashboard() {
 
             <div className="space-y-6">
               <BankAccounts wallets={wallets} onViewHistory={openActivityModal} />
+              <GoalProgressCard goals={goals} />
+              {recurringTransactions.filter(r => r.is_active).length > 0 && (
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-slate-900">Upcoming Recurring</h3>
+                    <a href="/recurring" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                      View All
+                    </a>
+                  </div>
+                  <div className="space-y-3">
+                    {recurringTransactions
+                      .filter(r => r.is_active)
+                      .slice(0, 5)
+                      .map(r => (
+                        <div key={r.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                          <div className="flex-1">
+                            <p className="text-xs font-semibold text-slate-900 truncate">{r.description}</p>
+                            <p className="text-[10px] text-slate-500 mt-1">
+                              {new Date(r.next_occurrence).toLocaleDateString()} • {r.frequency}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className={`text-sm font-bold ${r.type === 'income' ? 'text-emerald-600' : 'text-slate-900'}`}>
+                              {r.type === 'income' ? '+' : '-'} {new Intl.NumberFormat('id-ID').format(r.amount)}
+                            </p>
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold ${
+                              r.type === 'income' ? 'bg-emerald-50 text-emerald-600' :
+                              r.type === 'expense' ? 'bg-red-50 text-red-600' :
+                              'bg-blue-50 text-blue-600'
+                            }`}>
+                              {r.type}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
               <PriorityGoals tasks={upcomingTasks} />
               <GrowthIndex savingsRate={stats.savingsRate} />
             </div>

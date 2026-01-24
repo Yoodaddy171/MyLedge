@@ -2,6 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
+  console.log(`[Middleware TRACE] Path: ${request.nextUrl.pathname}`);
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -13,52 +14,45 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
+        getAll() {
+          return request.cookies.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          });
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
+          
           response = NextResponse.next({
             request: {
               headers: request.headers,
             },
           });
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          });
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          });
+          
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, {
+              ...options,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+            })
+          );
         },
       },
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error } = await supabase.auth.getUser();
+  
+  // Debug Logging
+  console.log(`[Middleware] Path: ${request.nextUrl.pathname}`);
+  console.log(`[Middleware] Cookies found: ${request.cookies.getAll().map(c => c.name).join(', ')}`);
+  console.log(`[Middleware] User found: ${!!user}`);
+  
+  // Only log real errors, ignore "Auth session missing!" which is normal for anon users
+  if (error && !error.message.includes('Auth session missing!')) {
+    console.log(`[Middleware] Auth Error: ${error.message}`);
+  }
 
   // Proteksi Route
-  // Kecualikan /login dan /auth (callback) dari proteksi redirect
-  const isAuthPath = request.nextUrl.pathname.startsWith('/auth');
+  // Kecualikan /login dan /callback dari proteksi redirect
+  const isAuthPath = request.nextUrl.pathname === '/callback' || request.nextUrl.pathname.startsWith('/auth');
   const isLoginPage = request.nextUrl.pathname === '/login';
 
   if (!user && !isLoginPage && !isAuthPath) {

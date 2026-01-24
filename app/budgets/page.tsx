@@ -17,7 +17,10 @@ export default function BudgetsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  const [formData, setFormData] = useState({ category_id: '', amount: '' });
+  const [formData, setFormData] = useState({
+    category_id: '',
+    amount: ''
+  });
 
   useBodyScrollLock(isModalOpen);
 
@@ -65,10 +68,13 @@ export default function BudgetsPage() {
     if (error) toast.error(error.message);
     else {
       toast.success(editingId ? "Budget updated" : "Budget set");
-      setIsModalOpen(false); setEditingId(null); setFormData({ category_id: '', amount: '' });
+      setIsModalOpen(false);
+      setEditingId(null);
+      setFormData({ category_id: '', amount: '' });
       fetchData();
     }
   };
+
 
   const handleDeleteBudget = async (id: number) => {
     if (!confirm("Delete budget limit?")) return;
@@ -109,10 +115,13 @@ export default function BudgetsPage() {
                     <p className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-widest">Monthly Limit</p>
                   </div>
                   <div className="flex gap-1 md:opacity-0 group-hover:opacity-100 transition-all">
-                    <button onClick={() => { 
-                      setEditingId(b.id); 
-                      setFormData({ category_id: b.category_id?.toString() || '', amount: b.budget_amount?.toString() || '' }); 
-                      setIsModalOpen(true); 
+                    <button onClick={() => {
+                      setEditingId(b.id);
+                      setFormData({
+                        category_id: b.category_id?.toString() || '',
+                        amount: b.budget_amount?.toString() || ''
+                      });
+                      setIsModalOpen(true);
                     }} className="p-1.5 text-slate-400 hover:text-blue-600 rounded-md transition-colors"><Edit3 size={14} /></button>
                     <button onClick={() => handleDeleteBudget(b.id)} className="p-1.5 text-slate-400 hover:text-red-600 rounded-md transition-colors"><Trash2 size={14} /></button>
                   </div>
@@ -157,12 +166,12 @@ export default function BudgetsPage() {
         {isModalOpen && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-white w-full max-w-sm rounded-2xl shadow-xl p-5 md:p-6 overflow-hidden text-black font-black">
-              <div className="flex justify-between items-center mb-6">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-white w-full max-w-md max-h-[90vh] rounded-2xl shadow-xl overflow-hidden text-black font-black flex flex-col">
+              <div className="flex justify-between items-center p-5 md:p-6 border-b border-slate-100">
                 <h2 className="text-lg font-bold text-slate-900">{editingId ? 'Edit Limit' : 'Set Limit'}</h2>
                 <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={18} /></button>
               </div>
-              <form onSubmit={handleManualSubmit} className="space-y-4">
+              <form id="budget-form" onSubmit={handleManualSubmit} className="flex-1 overflow-y-auto p-5 md:p-6 space-y-4">
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Category</label>
                   <select required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-100 transition-all" value={formData.category_id} onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}>
@@ -174,8 +183,11 @@ export default function BudgetsPage() {
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Monthly Max</label>
                   <input type="text" placeholder="0" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-base font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-100 transition-all" value={formatDisplayAmount(formData.amount)} onChange={(e) => setFormData({ ...formData, amount: e.target.value.replace(/\D/g, "") })} />
                 </div>
-                <button type="submit" className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-slate-800 transition-all mt-2 text-xs uppercase tracking-widest active:scale-[0.98]">Save Budget Record</button>
+
               </form>
+              <div className="p-5 md:p-6 border-t border-slate-100">
+                <button type="submit" form="budget-form" className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-slate-800 transition-all text-xs uppercase tracking-widest active:scale-[0.98]">Save Budget Record</button>
+              </div>
             </motion.div>
           </div>
         )}

@@ -14,7 +14,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-3 block">
+          <label className="text-xs font-semibold text-slate-700 mb-2 block">
             {label}
             {props.required && <span className="text-red-500 ml-1">*</span>}
           </label>
@@ -49,13 +49,13 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         </div>
 
         {error && (
-          <p className="text-[10px] font-black text-red-600 uppercase tracking-wide mt-2">
+          <p className="text-xs font-medium text-red-600 mt-2">
             {error}
           </p>
         )}
 
         {helperText && !error && (
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-2">
+          <p className="text-xs font-medium text-slate-500 mt-2">
             {helperText}
           </p>
         )}

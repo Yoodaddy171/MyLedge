@@ -44,7 +44,7 @@ export default function AuthPage() {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
+        options: { redirectTo: `${window.location.origin}/callback` },
       });
       if (error) throw error;
     } catch (err: any) { alert(err.message); }

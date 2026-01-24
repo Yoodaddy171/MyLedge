@@ -3,15 +3,30 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { formatDisplayAmount } from '@/lib/utils';
-import { Plus, Download, Search, Filter, Trash2, X, Edit3, TrendingUp, TrendingDown, Landmark, ChevronDown, ChevronUp, Activity, Briefcase, Target, PieChart } from 'lucide-react';
+import { Plus, Download, Search, Filter, Trash2, X, Edit3, TrendingUp, TrendingDown, Landmark, ChevronDown, ChevronUp, Activity, Briefcase, Target, PieChart, Tag as TagIcon } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import Pagination from '@/components/Pagination';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
+import { useGlobalData } from '@/context/GlobalDataContext';
+import TagBadge from '@/components/TagBadge';
 
 export default function TransactionsPage() {
+  const {
+    wallets,
+    categories,
+    masterItems,
+    projects,
+    assets,
+    debts: activeDebts,
+    goals,
+    submissions,
+    tags,
+    refreshData: refreshGlobalData
+  } = useGlobalData();
+
   const [transactions, setTransactions] = useState<any[]>([]);
   const [totalItems, setTotalItems] = useState(0); 
   const [loading, setLoading] = useState(true);
@@ -19,16 +34,6 @@ export default function TransactionsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   
-  // Support Data
-  const [masterItems, setMasterItems] = useState<any[]>([]);
-  const [wallets, setWallets] = useState<any[]>([]);
-  const [projects, setProjects] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [activeDebts, setActiveDebts] = useState<any[]>([]);
-  const [assets, setAssets] = useState<any[]>([]);
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [goals, setGoals] = useState<any[]>([]);
-
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     type: 'expense',
@@ -44,11 +49,20 @@ export default function TransactionsPage() {
     submission_id: '',
     goal_id: ''
   });
+  const [selectedTags, setSelectedTags] = useState<number[]>([]);
+
+  // Recurring transaction fields
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringFrequency, setRecurringFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'>('monthly');
+  const [recurringStartDate, setRecurringStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [recurringEndDate, setRecurringEndDate] = useState<string>('');
+  const [autoGenerate, setAutoGenerate] = useState(true);
 
   const [filterWallet, setFilterWallet] = useState<string>('');
   const [filterCategory, setFilterCategory] = useState<string>('');
   const [filterDateStart, setFilterDateStart] = useState<string>('');
   const [filterDateEnd, setFilterDateEnd] = useState<string>('');
+  const [filterTag, setFilterTag] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
@@ -58,32 +72,7 @@ export default function TransactionsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   useBodyScrollLock(isModalOpen);
 
-  useEffect(() => { fetchFormSupportData(); }, []);
-  useEffect(() => { fetchTransactions(); }, [filterWallet, filterCategory, filterDateStart, filterDateEnd, searchQuery, currentPage, itemsPerPage]);
-
-  async function fetchFormSupportData() {
-    try {
-      const [items, w, debts, cats, projs, asts, subs, g] = await Promise.all([
-        supabase.from('transaction_items').select('id, name, code, category_id, categories(id, name, type)'),
-        supabase.from('wallets').select('id, name').eq('is_active', true),
-        supabase.from('debts').select('id, name, remaining_amount').eq('is_paid', false).gt('remaining_amount', 0),
-        supabase.from('categories').select('id, name'),
-        supabase.from('projects').select('id, name').neq('status', 'cancelled'),
-        supabase.from('assets').select('id, name, symbol'),
-        supabase.from('submissions').select('id, entity, doc_number'),
-        supabase.from('financial_goals').select('id, name').eq('status', 'active')
-      ]);
-      
-      setMasterItems(items.data || []);
-      setWallets(w.data || []);
-      setActiveDebts(debts.data || []);
-      setCategories(cats.data || []);
-      setProjects(projs.data || []);
-      setAssets(asts.data || []);
-      setSubmissions(subs.data || []);
-      setGoals(g.data || []);
-    } catch (error) { console.error('Error fetching support data:', error); }
-  }
+  useEffect(() => { fetchTransactions(); }, [filterWallet, filterCategory, filterDateStart, filterDateEnd, filterTag, searchQuery, currentPage, itemsPerPage]);
 
   const buildQuery = (baseQuery: any, categoryItemIds: number[] | null) => {
     let q = baseQuery;
@@ -105,27 +94,72 @@ export default function TransactionsPage() {
          categoryItemIds = items.map(i => i.id);
       }
 
+      // If filtering by tag, first get transaction IDs that have this tag
+      let taggedTransactionIds: number[] | null = null;
+      if (filterTag) {
+        const { data: tagAssignments } = await supabase
+          .from('transaction_tag_assignments')
+          .select('transaction_id')
+          .eq('tag_id', filterTag);
+
+        if (!tagAssignments || tagAssignments.length === 0) {
+          setTransactions([]);
+          setTotalItems(0);
+          setLoading(false);
+          return;
+        }
+        taggedTransactionIds = tagAssignments.map(ta => ta.transaction_id);
+      }
+
       let query = supabase.from('transactions')
         .select(`
-          *, 
-          wallet:wallets!fk_transactions_wallet(name), 
-          to_wallet:wallets!fk_transactions_to_wallet(name), 
-          project:projects!fk_transactions_project(name), 
+          *,
+          wallet:wallets!fk_transactions_wallet(name),
+          to_wallet:wallets!fk_transactions_to_wallet(name),
+          project:projects!fk_transactions_project(name),
           asset:assets(name, symbol),
           submission:submissions(entity),
           goal:financial_goals(name),
           item:transaction_items!fk_transactions_item(name, code, categories!fk_transaction_items_category(id, name))
         `, { count: 'exact' });
-      
+
       query = buildQuery(query, categoryItemIds);
+
+      // Apply tag filter if present
+      if (taggedTransactionIds !== null) {
+        query = query.in('id', taggedTransactionIds);
+      }
+
       const from = (currentPage - 1) * itemsPerPage;
       const to = from + itemsPerPage - 1;
       const { data, error, count } = await query.order('date', { ascending: false }).order('created_at', { ascending: false }).range(from, to);
 
       if (error) throw error;
-      setTransactions(data || []);
+
+      // Fetch tags for each transaction
+      if (data && data.length > 0) {
+        const transactionIds = data.map(t => t.id);
+        const { data: tagAssignments } = await supabase
+          .from('transaction_tag_assignments')
+          .select('transaction_id, tag_id, transaction_tags(id, name, color, icon)')
+          .in('transaction_id', transactionIds);
+
+        // Attach tags to transactions
+        const transactionsWithTags = data.map(transaction => ({
+          ...transaction,
+          tags: tagAssignments
+            ?.filter(ta => ta.transaction_id === transaction.id)
+            .map(ta => (ta as any).transaction_tags)
+            .filter(Boolean) || []
+        }));
+
+        setTransactions(transactionsWithTags);
+      } else {
+        setTransactions(data || []);
+      }
+
       setTotalItems(count || 0);
-    } catch (error: any) { logger.handleApiError(error, 'Failed to load transactions', { component: 'TransactionsPage' }); } 
+    } catch (error: any) { logger.handleApiError(error, 'Failed to load transactions', { component: 'TransactionsPage' }); }
     finally { setLoading(false); }
   }
 
@@ -160,37 +194,119 @@ export default function TransactionsPage() {
       goal_id: formData.goal_id || null,
     };
 
-    const { error } = editingId ? await supabase.from('transactions').update(payload).eq('id', editingId) : await supabase.from('transactions').insert(payload);
-    
-    if (error) toast.error(error.message);
-    else {
-      toast.success(editingId ? "Entry updated" : "Entry added");
-      setIsModalOpen(false); 
-      setEditingId(null);
-      resetForm();
-      fetchTransactions();
+    if (editingId) {
+      const { error } = await supabase.from('transactions').update(payload).eq('id', editingId);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      // Update tag assignments for editing
+      // First delete existing tags
+      await supabase.from('transaction_tag_assignments').delete().eq('transaction_id', editingId);
+
+      // Then insert new tags
+      if (selectedTags.length > 0) {
+        const tagAssignments = selectedTags.map(tagId => ({
+          transaction_id: editingId,
+          tag_id: tagId,
+          user_id: user.id
+        }));
+        const { error: tagError } = await supabase.from('transaction_tag_assignments').insert(tagAssignments);
+        if (tagError) {
+          console.error('Error updating tags:', tagError);
+        }
+      }
+    } else {
+      const { data: newTransaction, error } = await supabase.from('transactions').insert(payload).select().single();
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      // Insert tag assignments for new transaction
+      if (newTransaction && selectedTags.length > 0) {
+        const tagAssignments = selectedTags.map(tagId => ({
+          transaction_id: newTransaction.id,
+          tag_id: tagId,
+          user_id: user.id
+        }));
+        const { error: tagError } = await supabase.from('transaction_tag_assignments').insert(tagAssignments);
+        if (tagError) {
+          console.error('Error inserting tags:', tagError);
+        }
+      }
     }
+
+    // If recurring checkbox is checked and not editing, create recurring template
+    if (isRecurring && !editingId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const recurringPayload = {
+          user_id: user.id,
+          type: formData.type,
+          amount: parseFloat(formData.amount),
+          description: formData.description,
+          wallet_id: formData.wallet_id,
+          to_wallet_id: formData.type === 'transfer' ? (formData.to_wallet_id || null) : null,
+          item_id: formData.item_id || null,
+          project_id: formData.project_id || null,
+          frequency: recurringFrequency,
+          start_date: recurringStartDate,
+          end_date: recurringEndDate || null,
+          next_occurrence: recurringStartDate,
+          is_active: true,
+          auto_generate: autoGenerate,
+          notes: formData.notes || null
+        };
+
+        const { error: recurringError } = await supabase
+          .from('recurring_transactions')
+          .insert(recurringPayload);
+
+        if (recurringError) {
+          console.error('Error creating recurring transaction:', recurringError);
+          toast.error('Transaction saved but recurring setup failed');
+        } else {
+          toast.success('Transaction and recurring template created');
+        }
+      }
+    } else {
+      toast.success(editingId ? "Entry updated" : "Entry added");
+    }
+
+    setIsModalOpen(false);
+    setEditingId(null);
+    resetForm();
+    fetchTransactions();
+    refreshGlobalData();
   };
 
   const resetForm = () => {
-    setFormData({ 
-        date: new Date().toISOString().split('T')[0], 
-        type: 'expense', 
-        item_id: '', 
-        wallet_id: '', 
-        to_wallet_id: '', 
-        project_id: '', 
-        amount: '', 
-        description: '', 
-        notes: '', 
+    setFormData({
+        date: new Date().toISOString().split('T')[0],
+        type: 'expense',
+        item_id: '',
+        wallet_id: '',
+        to_wallet_id: '',
+        project_id: '',
+        amount: '',
+        description: '',
+        notes: '',
         debt_id: '',
         asset_id: '',
         submission_id: '',
         goal_id: ''
     });
+    setSelectedTags([]);
+    setIsRecurring(false);
+    setRecurringFrequency('monthly');
+    setRecurringStartDate(new Date().toISOString().split('T')[0]);
+    setRecurringEndDate('');
+    setAutoGenerate(true);
   };
 
-  const openEditModal = (trx: any) => {
+  const openEditModal = async (trx: any) => {
     setEditingId(trx.id);
     setFormData({
       date: trx.date,
@@ -207,20 +323,28 @@ export default function TransactionsPage() {
       submission_id: trx.submission_id || '',
       goal_id: trx.goal_id || ''
     });
+
+    // Fetch tags for this transaction
+    const { data: tagAssignments } = await supabase
+      .from('transaction_tag_assignments')
+      .select('tag_id')
+      .eq('transaction_id', trx.id);
+
+    setSelectedTags(tagAssignments?.map(ta => ta.tag_id) || []);
     setIsModalOpen(true);
   };
 
   const handleDeleteSingle = async (id: number) => {
     if (!confirm("Delete this entry?")) return;
     const { error } = await supabase.from('transactions').delete().eq('id', id);
-    if (!error) { toast.success("Entry removed"); fetchTransactions(); } 
+    if (!error) { toast.success("Entry removed"); fetchTransactions(); refreshGlobalData(); } 
     else { toast.error(error.message); }
   };
 
   const handleDeleteBulk = async () => {
     if (!confirm(`Delete ${selectedIds.length} entries?`)) return;
     const { error } = await supabase.from('transactions').delete().in('id', selectedIds);
-    if (!error) { toast.success("Deleted"); setSelectedIds([]); fetchTransactions(); } else { toast.error(error.message); }
+    if (!error) { toast.success("Deleted"); setSelectedIds([]); fetchTransactions(); refreshGlobalData(); } else { toast.error(error.message); }
   };
 
   const resetFilters = () => {
@@ -228,6 +352,7 @@ export default function TransactionsPage() {
     setFilterCategory('');
     setFilterDateStart('');
     setFilterDateEnd('');
+    setFilterTag('');
     setSearchQuery('');
     setCurrentPage(1);
   };
@@ -267,7 +392,7 @@ export default function TransactionsPage() {
         <div className="p-4 md:p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/50 transition-colors" onClick={() => setIsFiltersOpen(!isFiltersOpen)}>
           <div className="flex items-center gap-3">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2"><Filter size={16} className="text-blue-600" /> Filters</h3>
-            {(filterWallet || filterCategory || filterDateStart || filterDateEnd || searchQuery) && <span className="w-2 h-2 rounded-full bg-blue-500" />}
+            {(filterWallet || filterCategory || filterTag || filterDateStart || filterDateEnd || searchQuery) && <span className="w-2 h-2 rounded-full bg-blue-500" />}
           </div>
           <div className="flex items-center gap-4">
             <button onClick={(e) => { e.stopPropagation(); resetFilters(); }} className="text-[10px] font-bold text-slate-400 hover:text-red-600 transition-colors uppercase tracking-widest">Reset</button>
@@ -278,7 +403,7 @@ export default function TransactionsPage() {
         <AnimatePresence>
           {isFiltersOpen && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-              <div className="p-4 md:p-5 pt-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 border-t border-slate-50 mt-2">
+              <div className="p-4 md:p-5 pt-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 border-t border-slate-50 mt-2">
                 <div className="lg:col-span-2 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
                   <input type="text" placeholder="Search description..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all shadow-sm" />
@@ -290,6 +415,10 @@ export default function TransactionsPage() {
                 <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm">
                   <option value="">All Categories</option>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <select value={filterTag} onChange={(e) => setFilterTag(e.target.value)} className="bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm">
+                  <option value="">All Tags</option>
+                  {tags.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
                 <div className="flex items-center gap-2">
                   <input type="date" value={filterDateStart} onChange={(e) => setFilterDateStart(e.target.value)} className="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-2.5 text-[10px] font-bold text-slate-900 outline-none focus:border-blue-400 shadow-sm" />
@@ -355,12 +484,24 @@ export default function TransactionsPage() {
                         <div className="flex items-center gap-3">
                           <div className={`w-1 h-8 rounded-full ${trx.type === 'income' ? 'bg-emerald-400' : trx.type === 'transfer' ? 'bg-blue-400' : 'bg-red-400'} opacity-80`} />
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                                 <p className="text-sm font-bold text-slate-900 truncate max-w-[150px]">{trx.type === 'transfer' ? 'Transfer' : trx.item?.name || trx.description}</p>
                                 {trx.project && <span className="text-[8px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 font-bold uppercase tracking-tighter flex items-center gap-1"><Target size={8}/>{trx.project.name}</span>}
                                 {trx.asset && <span className="text-[8px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded border border-amber-100 font-bold uppercase tracking-tighter flex items-center gap-1"><PieChart size={8}/>{trx.asset.symbol}</span>}
                             </div>
-                            <p className="text-[10px] text-slate-400 font-bold">{new Date(trx.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                              <p className="text-[10px] text-slate-400 font-bold">{new Date(trx.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</p>
+                              {trx.tags && trx.tags.length > 0 && (
+                                <>
+                                  <span className="text-slate-300">•</span>
+                                  <div className="flex gap-1 flex-wrap">
+                                    {trx.tags.map((tag: any) => (
+                                      <TagBadge key={tag.id} tag={tag} size="sm" />
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -430,14 +571,68 @@ export default function TransactionsPage() {
                             {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                         </select></div>
                     ) : (
-                        <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Category Item</label><select className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.item_id} onChange={e => setFormData({...formData, item_id: e.target.value})}>
-                            <option value="">Select...</option>
-                            {masterItems.filter(i => (i.categories as any)?.type === formData.type).map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-                        </select></div>
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Category Item</label>
+                            <select className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.item_id} onChange={e => setFormData({...formData, item_id: e.target.value})}>
+                                <option value="">Select item...</option>
+                                {(() => {
+                                    const filtered = masterItems.filter(i => (i.categories as any)?.type === formData.type);
+                                    console.log('Form type:', formData.type);
+                                    console.log('All masterItems:', masterItems.length);
+                                    console.log('Filtered items:', filtered.length, filtered);
+                                    return filtered.map(i => (
+                                        <option key={i.id} value={i.id}>
+                                            {i.name} {(i.categories as any)?.name ? `(${(i.categories as any).name})` : ''}
+                                        </option>
+                                    ));
+                                })()}
+                            </select>
+                        </div>
                     )}
                   </div>
 
                   <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Description</label><input type="text" placeholder="Note..." className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} /></div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block flex items-center gap-1.5">
+                      <TagIcon size={12} />
+                      Tags
+                    </label>
+                    <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {selectedTags.map(tagId => {
+                          const tag = tags.find(t => t.id === tagId);
+                          return tag ? (
+                            <TagBadge
+                              key={tag.id}
+                              tag={tag}
+                              size="md"
+                              onRemove={() => setSelectedTags(selectedTags.filter(id => id !== tagId))}
+                            />
+                          ) : null;
+                        })}
+                      </div>
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          const tagId = Number(e.target.value);
+                          if (tagId && !selectedTags.includes(tagId)) {
+                            setSelectedTags([...selectedTags, tagId]);
+                          }
+                        }}
+                        className="w-full text-xs p-2 bg-white rounded-lg outline-none text-slate-900 font-bold border border-slate-200"
+                      >
+                        <option value="">+ Add tag...</option>
+                        {tags
+                          .filter(t => !selectedTags.includes(t.id))
+                          .map(t => (
+                            <option key={t.id} value={t.id}>
+                              {t.icon ? `${t.icon} ${t.name}` : t.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  </div>
 
                   <div className="pt-2 border-t border-slate-100 mt-2">
                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-3">Optional Associations</p>
@@ -458,6 +653,69 @@ export default function TransactionsPage() {
                         </div>
                     </div>
                   </div>
+
+                  {!editingId && (
+                    <div className="pt-3 border-t border-slate-100 mt-3">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isRecurring}
+                          onChange={(e) => setIsRecurring(e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-xs font-bold text-slate-700">Make this a recurring transaction</span>
+                      </label>
+
+                      {isRecurring && (
+                        <div className="mt-3 space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[9px] font-bold text-slate-500 mb-1 block uppercase">Frequency</label>
+                              <select
+                                value={recurringFrequency}
+                                onChange={(e) => setRecurringFrequency(e.target.value as any)}
+                                className="w-full text-[10px] p-2 bg-white rounded-lg outline-none text-slate-900 font-bold border border-slate-200"
+                              >
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="quarterly">Quarterly</option>
+                                <option value="yearly">Yearly</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-bold text-slate-500 mb-1 block uppercase">Start Date</label>
+                              <input
+                                type="date"
+                                value={recurringStartDate}
+                                onChange={(e) => setRecurringStartDate(e.target.value)}
+                                className="w-full text-[10px] p-2 bg-white rounded-lg outline-none text-slate-900 font-bold border border-slate-200"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[9px] font-bold text-slate-500 mb-1 block uppercase">End Date (Optional)</label>
+                            <input
+                              type="date"
+                              value={recurringEndDate}
+                              onChange={(e) => setRecurringEndDate(e.target.value)}
+                              className="w-full text-[10px] p-2 bg-white rounded-lg outline-none text-slate-900 font-bold border border-slate-200"
+                              placeholder="Leave empty for no end date"
+                            />
+                          </div>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={autoGenerate}
+                              onChange={(e) => setAutoGenerate(e.target.checked)}
+                              className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-[10px] font-bold text-slate-600">Auto-generate transactions</span>
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <button type="submit" className="w-full py-3.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors mt-2 shadow-lg shadow-slate-200 uppercase tracking-widest active:scale-[0.98]">Save Transaction</button>
                </form>

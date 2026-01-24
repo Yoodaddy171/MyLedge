@@ -10,7 +10,7 @@ interface RecentTransactionsProps {
 
 export default function RecentTransactions({ transactions }: RecentTransactionsProps) {
   return (
-    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm h-full flex flex-col">
+    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg"><Receipt size={16} /></div>
@@ -20,7 +20,7 @@ export default function RecentTransactions({ transactions }: RecentTransactionsP
           View All <ArrowRight size={12} />
         </Link>
       </div>
-      <div className="space-y-3 flex-1">
+      <div className="space-y-3">
         {transactions.map((trx) => (
           <div key={trx.id} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-all group border border-transparent hover:border-slate-100">
             <div className="flex items-center gap-3 overflow-hidden">

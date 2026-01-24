@@ -82,16 +82,16 @@ export function Modal({
             transition={{ duration: 0.3, type: 'spring' }}
             onClick={handleContentClick}
             className={cn(
-              'relative bg-white w-full rounded-[3rem] shadow-2xl max-h-[90vh] overflow-hidden text-black font-black pointer-events-auto',
+              'relative bg-white w-full rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden text-black pointer-events-auto',
               sizeClasses[size],
               className
             )}
           >
             {/* Header */}
             {(title || showCloseButton) && (
-              <div className="flex items-center justify-between px-10 py-8 border-b-2 border-slate-100">
+              <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
                 {title && (
-                  <h2 className="text-2xl font-black uppercase tracking-tight">
+                  <h2 className="text-xl font-bold text-slate-900">
                     {title}
                   </h2>
                 )}
@@ -99,17 +99,17 @@ export function Modal({
                 {showCloseButton && (
                   <button
                     onClick={onClose}
-                    className="p-2 hover:bg-slate-100 rounded-full transition-colors ml-auto"
+                    className="p-2 hover:bg-slate-50 rounded-full transition-colors ml-auto"
                     aria-label="Close modal"
                   >
-                    <X size={20} />
+                    <X size={18} />
                   </button>
                 )}
               </div>
             )}
 
             {/* Body */}
-            <div className="overflow-y-auto overscroll-contain max-h-[calc(90vh-120px)] p-10" style={{WebkitOverflowScrolling: 'touch'}}>
+            <div className="overflow-y-auto overscroll-contain max-h-[calc(90vh-120px)] p-6" style={{WebkitOverflowScrolling: 'touch'}}>
               {children}
             </div>
           </motion.div>
@@ -160,18 +160,18 @@ export function ConfirmModal({
       showCloseButton={false}
     >
       <div className="text-center">
-        <h3 className="text-xl font-black uppercase tracking-tight mb-4">
+        <h3 className="text-lg font-bold text-slate-900 mb-3">
           {title}
         </h3>
 
-        <p className="text-sm text-slate-600 font-bold mb-8">
+        <p className="text-sm text-slate-600 mb-6">
           {message}
         </p>
 
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 bg-slate-100 text-black font-black py-4 rounded-xl hover:bg-slate-200 transition-all border-2 border-slate-200 uppercase text-xs tracking-widest"
+            className="flex-1 bg-slate-100 text-slate-900 font-semibold py-3 rounded-xl hover:bg-slate-200 transition-all border border-slate-200 text-sm"
           >
             {cancelText}
           </button>
@@ -179,7 +179,7 @@ export function ConfirmModal({
           <button
             onClick={handleConfirm}
             className={cn(
-              'flex-1 text-white font-black py-4 rounded-xl transition-all shadow-lg uppercase text-xs tracking-widest',
+              'flex-1 text-white font-semibold py-3 rounded-xl transition-all shadow-lg text-sm',
               variantStyles[variant]
             )}
           >

@@ -21,7 +21,9 @@ import {
   Target,
   Landmark,
   Calendar,
-  Briefcase
+  Briefcase,
+  Repeat,
+  Tag
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
@@ -29,6 +31,8 @@ import { Toaster } from "sonner";
 import UrgentTaskNotification from "@/components/UrgentTaskNotification";
 import SmoothScroll from "@/components/SmoothScroll";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { GlobalDataProvider } from "@/context/GlobalDataContext";
+import NotificationCenter from "@/components/NotificationCenter";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -65,11 +69,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   const NavContent = () => (
     <>
-      <div className="flex items-center gap-3 mb-8 px-2">
-        <div className="w-9 h-9 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 flex items-center justify-center p-1.5 shadow-2xl">
-          <img src="/logo.png" alt="MyLedger" className="w-full h-full object-contain" />
+      <div className="flex items-center justify-between gap-3 mb-8 px-2">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 flex items-center justify-center p-1.5 shadow-2xl">
+            <img src="/logo.png" alt="MyLedger" className="w-full h-full object-contain" />
+          </div>
+          <h1 className="text-xl font-black tracking-tighter text-white uppercase italic">MyLedger</h1>
         </div>
-        <h1 className="text-xl font-black tracking-tighter text-white uppercase italic">MyLedger</h1>
+        <NotificationCenter />
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto pr-2 no-scrollbar">
@@ -77,7 +84,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <NavItem href="/" icon={<LayoutDashboard size={18} />} label="Dashboard" active={pathname === '/'} />
         <NavItem href="/analytics" icon={<BarChart3 size={18} />} label="Analytics" active={pathname === '/analytics'} />
         <NavItem href="/transactions" icon={<Receipt size={18} />} label="Transactions" active={pathname === '/transactions'} />
+        <NavItem href="/recurring" icon={<Repeat size={18} />} label="Recurring" active={pathname === '/recurring'} />
         <NavItem href="/budgets" icon={<Target size={18} />} label="Budgets" active={pathname === '/budgets'} />
+        <NavItem href="/goals" icon={<Target size={18} />} label="Goals" active={pathname === '/goals'} />
         <NavItem href="/debts" icon={<TrendingDown size={18} />} label="Debts" active={pathname === '/debts'} />
         <NavItem href="/investments" icon={<PieChart size={18} />} label="Investments" active={pathname === '/investments'} />
         <NavItem href="/projects" icon={<TrendingUp size={18} />} label="Projects" active={pathname === '/projects'} />
@@ -89,6 +98,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         <p className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-3 mt-8 text-white opacity-50">Management</p>
         <NavItem href="/banks" icon={<Landmark size={18} />} label="Banks" active={pathname === '/banks'} />
+        <NavItem href="/tags" icon={<Tag size={18} />} label="Tags" active={pathname === '/tags'} />
         <NavItem href="/master" icon={<Settings size={18} />} label="Master Data" active={pathname === '/master'} />
       </nav>
 
@@ -124,72 +134,74 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#f8fafc] text-black`}>
-        <SmoothScroll>
-          <Toaster position="top-center" richColors />
-          <UrgentTaskNotification />
-          <div className="flex flex-col md:flex-row min-h-screen">
-            {!isAuthPage && (
-              <>
-                {/* MOBILE HEADER */}
-                <header className="md:hidden flex items-center justify-between p-4 bg-[#0f172a] text-white sticky top-0 z-50 shadow-lg border-b border-white/5">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-white/5 rounded-lg flex items-center justify-center p-1">
-                      <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
+        <GlobalDataProvider>
+          <SmoothScroll>
+            <Toaster position="top-center" richColors />
+            <UrgentTaskNotification />
+            <div className="flex flex-col md:flex-row min-h-screen">
+              {!isAuthPage && (
+                <>
+                  {/* MOBILE HEADER */}
+                  <header className="md:hidden flex items-center justify-between p-4 bg-[#0f172a] text-white sticky top-0 z-50 shadow-lg border-b border-white/5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-white/5 rounded-lg flex items-center justify-center p-1">
+                        <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
+                      </div>
+                      <span className="font-black text-lg tracking-tighter uppercase italic">MyLedger</span>
                     </div>
-                    <span className="font-black text-lg tracking-tighter uppercase italic">MyLedger</span>
-                  </div>
-                  <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
-                    <Menu size={24} />
-                  </button>
-                </header>
+                    <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+                      <Menu size={24} />
+                    </button>
+                  </header>
 
-                {/* MOBILE DRAWER */}
-                <AnimatePresence>
-                  {isMobileMenuOpen && (
-                    <div className="fixed inset-0 z-[100] md:hidden text-white">
-                      <motion.div
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
-                      />
-                      <motion.aside
-                        initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
-                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="absolute left-0 top-0 bottom-0 w-64 bg-[#0f172a] p-6 flex flex-col shadow-2xl"
-                      >
-                        <button onClick={() => setIsMobileMenuOpen(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-white transition-colors">
-                          <X size={24} />
-                        </button>
-                        <NavContent />
-                      </motion.aside>
-                    </div>
-                  )}
-                </AnimatePresence>
+                  {/* MOBILE DRAWER */}
+                  <AnimatePresence>
+                    {isMobileMenuOpen && (
+                      <div className="fixed inset-0 z-[100] md:hidden text-white">
+                        <motion.div
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+                        />
+                        <motion.aside
+                          initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
+                          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                          className="absolute left-0 top-0 bottom-0 w-64 bg-[#0f172a] p-6 flex flex-col shadow-2xl"
+                        >
+                          <button onClick={() => setIsMobileMenuOpen(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-white transition-colors">
+                            <X size={24} />
+                          </button>
+                          <NavContent />
+                        </motion.aside>
+                      </div>
+                    )}
+                  </AnimatePresence>
 
-                {/* DESKTOP SIDEBAR */}
-                <aside className="w-60 bg-[#0f172a] text-white p-6 hidden md:flex flex-col shrink-0 sticky top-0 h-screen">
-                  <NavContent />
-                </aside>
-              </>
-            )}
+                  {/* DESKTOP SIDEBAR */}
+                  <aside className="w-60 bg-[#0f172a] text-white p-6 hidden md:flex flex-col shrink-0 sticky top-0 h-screen">
+                    <NavContent />
+                  </aside>
+                </>
+              )}
 
-            <main className={`flex-1 ${!isAuthPage ? 'px-4 py-6 md:px-10 md:py-10' : ''}`}>
-              <ErrorBoundary>
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={pathname}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                  >
-                    {children}
-                  </motion.div>
-                </AnimatePresence>
-              </ErrorBoundary>
-            </main>
-          </div>
-        </SmoothScroll>
+              <main className={`flex-1 ${!isAuthPage ? 'px-4 py-6 md:px-10 md:py-10' : ''}`}>
+                <ErrorBoundary>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={pathname}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                    >
+                      {children}
+                    </motion.div>
+                  </AnimatePresence>
+                </ErrorBoundary>
+              </main>
+            </div>
+          </SmoothScroll>
+        </GlobalDataProvider>
       </body>
     </html>
   );
