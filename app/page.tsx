@@ -29,7 +29,7 @@ import BankAccounts from '@/components/dashboard/BankAccounts';
 import PriorityGoals from '@/components/dashboard/PriorityGoals';
 import GrowthIndex from '@/components/dashboard/GrowthIndex';
 import GoalProgressCard from '@/components/dashboard/GoalProgressCard';
-import { useGlobalData } from '@/context/GlobalDataContext';
+import { useGlobalData } from '@/contexts/GlobalDataContext';
 
 export default function Dashboard() {
   const { wallets, debts, recurringTransactions, budgetAlerts, refreshData } = useGlobalData();

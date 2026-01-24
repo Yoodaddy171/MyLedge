@@ -6,7 +6,7 @@ import { Tag, Plus, Edit3, Trash2, X, Palette } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
-import { useGlobalData } from '@/context/GlobalDataContext';
+import { useGlobalData } from '@/contexts/GlobalDataContext';
 import TagBadge from '@/components/TagBadge';
 
 const PRESET_COLORS = [

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useGlobalData } from '@/context/GlobalDataContext';
+import { useGlobalData } from '@/contexts/GlobalDataContext';
 import { supabase } from '@/lib/supabase';
 import { Modal } from '@/components/ui/Modal';
 import { formatCurrency } from '@/lib/utils';

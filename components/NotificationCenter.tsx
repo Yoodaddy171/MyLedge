@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Bell, X, AlertTriangle, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useGlobalData } from '@/context/GlobalDataContext';
+import { useGlobalData } from '@/contexts/GlobalDataContext';
 import { markAlertAsRead, markAllAlertsAsRead, deleteAlert } from '@/lib/budget-alert-processor';
 import { toast } from 'sonner';
 

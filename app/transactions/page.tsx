@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import Pagination from '@/components/Pagination';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
-import { useGlobalData } from '@/context/GlobalDataContext';
+import { useGlobalData } from '@/contexts/GlobalDataContext';
 import TagBadge from '@/components/TagBadge';
 
 export default function TransactionsPage() {

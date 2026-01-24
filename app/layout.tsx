@@ -31,7 +31,7 @@ import { Toaster } from "sonner";
 import UrgentTaskNotification from "@/components/UrgentTaskNotification";
 import SmoothScroll from "@/components/SmoothScroll";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { GlobalDataProvider } from "@/context/GlobalDataContext";
+import { GlobalDataProvider } from "@/contexts/GlobalDataContext";
 import NotificationCenter from "@/components/NotificationCenter";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });

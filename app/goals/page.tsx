@@ -6,7 +6,7 @@ import { Target, Plus, Edit3, Trash2, X, TrendingUp, CheckCircle, Clock } from '
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
-import { useGlobalData } from '@/context/GlobalDataContext';
+import { useGlobalData } from '@/contexts/GlobalDataContext';
 
 type GoalStatus = 'active' | 'completed' | 'cancelled';
 
