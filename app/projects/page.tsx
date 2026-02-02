@@ -15,19 +15,21 @@ import {
   Activity,
   BarChart3,
   Calendar,
-  Wallet
+  Wallet as WalletIcon
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
+import type { Transaction } from '@/contexts/GlobalDataContext';
+import type { ProjectSummary, WalletOption } from '@/lib/types';
 
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState<any[]>([]);
-  const [selectedProject, setSelectedProject] = useState<any>(null);
-  const [projectTransactions, setProjectTransactions] = useState<any[]>([]);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [selectedProject, setSelectedProject] = useState<ProjectSummary | null>(null);
+  const [projectTransactions, setProjectTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [wallets, setWallets] = useState<any[]>([]);
+  const [wallets, setWallets] = useState<WalletOption[]>([]);
   
   // Modals
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
@@ -67,41 +69,62 @@ export default function ProjectsPage() {
 
 
   async function fetchWallets() {
-    const { data } = await supabase.from('wallets').select('id, name').eq('is_active', true);
+    // CRITICAL: Get user first and filter by user_id
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setWallets([]);
+      return;
+    }
+    const { data } = await supabase.from('wallets').select('id, name').eq('user_id', user.id).eq('is_active', true);
     setWallets(data || []);
   }
 
   async function fetchProjects() {
     try {
       setLoading(true);
+      // CRITICAL: Get user first and filter by user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setProjects([]);
+        setLoading(false);
+        return;
+      }
       const { data, error } = await supabase
         .from('project_summary_view')
         .select('*')
+        .eq('user_id', user.id)
         .order('last_transaction_date', { ascending: false });
-        
+
       if (error) throw error;
       setProjects(data || []);
-      
+
       if (data && data.length > 0 && !selectedProject) {
         setSelectedProject(data[0]);
       } else if (selectedProject) {
         const updated = data?.find(p => p.id === selectedProject.id);
         if (updated) setSelectedProject(updated);
       }
-    } catch (err) { 
-      toast.error("Failed to load projects"); 
-    } finally { 
-      setLoading(false); 
-    } 
+    } catch (err) {
+      toast.error("Failed to load projects");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function fetchProjectTransactions(projectId: number) {
+    // CRITICAL: Get user first and filter by user_id
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setProjectTransactions([]);
+      return;
+    }
     const { data, error } = await supabase
       .from('transactions')
       .select(`
         *,
         wallets!fk_transactions_wallet(name)
       `)
+      .eq('user_id', user.id)
       .eq('project_id', projectId)
       .eq('type', 'expense')
       .order('date', { ascending: false });
@@ -227,7 +250,7 @@ export default function ProjectsPage() {
             value={selectedProject?.id || ''}
             onChange={(e) => {
               const p = projects.find(proj => proj.id.toString() === e.target.value);
-              setSelectedProject(p);
+              setSelectedProject(p ?? null);
             }}
             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-blue-100 outline-none appearance-none cursor-pointer"
           >
@@ -294,8 +317,8 @@ export default function ProjectsPage() {
                       </td>
                       <td className="px-6 py-4">
                          <div className="flex items-center gap-2">
-                            <Wallet size={12} className="text-slate-300" />
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{trx.wallets?.name || 'Unknown'}</span>
+                            <WalletIcon size={12} className="text-slate-300" />
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{trx.wallet?.name || 'Unknown'}</span>
                          </div>
                       </td>
                       <td className="px-6 py-4 text-right">

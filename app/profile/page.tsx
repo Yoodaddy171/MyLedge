@@ -8,9 +8,10 @@ import {
   Camera, Loader2, ArrowRight, X, Edit3, Landmark, Receipt
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import type { AppUser } from '@/lib/types';
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [stats, setStats] = useState({ trxCount: 0, assetCount: 0, netWorth: 0 });
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -27,12 +28,26 @@ export default function ProfilePage() {
     try {
       setLoading(true);
       const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        setLoading(false);
+        return;
+      }
       setUser(authUser);
       setFullName(authUser?.user_metadata?.full_name || '');
 
-      const { count: trxs } = await supabase.from('transactions').select('*', { count: 'exact', head: true });
-      const { data: assets } = await supabase.from('assets').select('*');
-      const { data: debts } = await supabase.from('debts').select('*');
+      // CRITICAL: Filter all queries by user_id
+      const { count: trxs } = await supabase
+        .from('transactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', authUser.id);
+      const { data: assets } = await supabase
+        .from('assets')
+        .select('*')
+        .eq('user_id', authUser.id);
+      const { data: debts } = await supabase
+        .from('debts')
+        .select('*')
+        .eq('user_id', authUser.id);
 
       const totalAssets = assets?.reduce((acc, c) => acc + (c.quantity * c.current_price), 0) || 0;
       const totalDebts = debts?.reduce((acc, c) => acc + Number(c.remaining_amount), 0) || 0;
@@ -61,7 +76,7 @@ export default function ProfilePage() {
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !user) return;
 
     try {
       setUpdating(true);

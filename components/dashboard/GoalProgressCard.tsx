@@ -4,11 +4,11 @@ import { Target, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 
 interface Goal {
-  id: any;
+  id: number;
   name: string;
   target_amount: number;
   current_amount: number;
-  deadline?: string;
+  deadline?: string | null;
 }
 
 interface GoalProgressCardProps {

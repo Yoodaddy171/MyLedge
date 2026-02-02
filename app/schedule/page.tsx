@@ -42,11 +42,18 @@ export default function SchedulePage() {
   async function fetchEvents() {
     try {
       setLoading(true);
+      // CRITICAL: Get user first and filter all queries by user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
       const [{ data: tasks }, { data: debts }, { data: projects }, { data: recurring }] = await Promise.all([
-        supabase.from('tasks').select('*').eq('status', 'todo'),
-        supabase.from('debts').select('*').gt('remaining_amount', 0),
-        supabase.from('projects').select('*').neq('status', 'completed'),
-        supabase.from('recurring_transactions').select('*').eq('is_active', true)
+        supabase.from('tasks').select('*').eq('user_id', user.id).eq('status', 'todo'),
+        supabase.from('debts').select('*').eq('user_id', user.id).gt('remaining_amount', 0),
+        supabase.from('projects').select('*').eq('user_id', user.id).neq('status', 'completed'),
+        supabase.from('recurring_transactions').select('*').eq('user_id', user.id).eq('is_active', true)
       ]);
 
       const mappedEvents: CalendarEvent[] = [];

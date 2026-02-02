@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import Pagination from '@/components/Pagination';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
-import { useGlobalData } from '@/contexts/GlobalDataContext';
+import { useGlobalData, Transaction } from '@/contexts/GlobalDataContext';
 import TagBadge from '@/components/TagBadge';
 
 export default function TransactionsPage() {
@@ -27,7 +27,7 @@ export default function TransactionsPage() {
     refreshData: refreshGlobalData
   } = useGlobalData();
 
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [totalItems, setTotalItems] = useState(0); 
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -87,9 +87,22 @@ export default function TransactionsPage() {
   async function fetchTransactions() {
     try {
       setLoading(true);
+
+      // CRITICAL: Get authenticated user first
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        setLoading(false);
+        return;
+      }
+
       let categoryItemIds: number[] | null = null;
       if (filterCategory) {
-         const { data: items } = await supabase.from('transaction_items').select('id').eq('category_id', filterCategory);
+         // Filter transaction_items by user_id as well
+         const { data: items } = await supabase
+           .from('transaction_items')
+           .select('id')
+           .eq('user_id', user.id)
+           .eq('category_id', filterCategory);
          if (!items || items.length === 0) { setTransactions([]); setTotalItems(0); setLoading(false); return; }
          categoryItemIds = items.map(i => i.id);
       }
@@ -100,6 +113,7 @@ export default function TransactionsPage() {
         const { data: tagAssignments } = await supabase
           .from('transaction_tag_assignments')
           .select('transaction_id')
+          .eq('user_id', user.id)
           .eq('tag_id', filterTag);
 
         if (!tagAssignments || tagAssignments.length === 0) {
@@ -111,6 +125,7 @@ export default function TransactionsPage() {
         taggedTransactionIds = tagAssignments.map(ta => ta.transaction_id);
       }
 
+      // CRITICAL: Filter by user_id
       let query = supabase.from('transactions')
         .select(`
           *,
@@ -121,7 +136,8 @@ export default function TransactionsPage() {
           submission:submissions(entity),
           goal:financial_goals(name),
           item:transaction_items!fk_transactions_item(name, code, categories!fk_transaction_items_category(id, name))
-        `, { count: 'exact' });
+        `, { count: 'exact' })
+        .eq('user_id', user.id);
 
       query = buildQuery(query, categoryItemIds);
 
@@ -136,12 +152,14 @@ export default function TransactionsPage() {
 
       if (error) throw error;
 
-      // Fetch tags for each transaction
+      // Fetch tags for each transaction - must also filter by user
       if (data && data.length > 0) {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
         const transactionIds = data.map(t => t.id);
         const { data: tagAssignments } = await supabase
           .from('transaction_tag_assignments')
           .select('transaction_id, tag_id, transaction_tags(id, name, color, icon)')
+          .eq('user_id', currentUser?.id || '')
           .in('transaction_id', transactionIds);
 
         // Attach tags to transactions
@@ -177,13 +195,12 @@ export default function TransactionsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const payload: any = {
-      user_id: user.id,
+    const payload = {
       date: formData.date,
       type: formData.type,
       amount: Number(formData.amount),
       description: formData.description,
-      notes: formData.notes,
+      notes: formData.notes || null,
       wallet_id: formData.wallet_id || null,
       to_wallet_id: formData.type === 'transfer' ? (formData.to_wallet_id || null) : null,
       item_id: formData.item_id || null,
@@ -194,85 +211,53 @@ export default function TransactionsPage() {
       goal_id: formData.goal_id || null,
     };
 
+    // Convert selectedTags to number array for RPC
+    const tagIds = selectedTags.map(id => typeof id === 'string' ? parseInt(id, 10) : id);
+
     if (editingId) {
-      const { error } = await supabase.from('transactions').update(payload).eq('id', editingId);
+      // Use atomic function for update with tags
+      const { error } = await supabase.rpc('update_transaction_with_tags', {
+        p_transaction_id: editingId,
+        p_payload: payload,
+        p_tag_ids: tagIds
+      });
+
       if (error) {
         toast.error(error.message);
         return;
       }
-
-      // Update tag assignments for editing
-      // First delete existing tags
-      await supabase.from('transaction_tag_assignments').delete().eq('transaction_id', editingId);
-
-      // Then insert new tags
-      if (selectedTags.length > 0) {
-        const tagAssignments = selectedTags.map(tagId => ({
-          transaction_id: editingId,
-          tag_id: tagId,
-          user_id: user.id
-        }));
-        const { error: tagError } = await supabase.from('transaction_tag_assignments').insert(tagAssignments);
-        if (tagError) {
-          console.error('Error updating tags:', tagError);
-        }
-      }
+      toast.success("Entry updated");
     } else {
-      const { data: newTransaction, error } = await supabase.from('transactions').insert(payload).select().single();
+      // Build recurring payload if needed
+      const recurringPayload = isRecurring ? {
+        type: formData.type,
+        amount: parseFloat(formData.amount),
+        description: formData.description,
+        wallet_id: formData.wallet_id || null,
+        to_wallet_id: formData.type === 'transfer' ? (formData.to_wallet_id || null) : null,
+        item_id: formData.item_id || null,
+        project_id: formData.project_id || null,
+        frequency: recurringFrequency,
+        start_date: recurringStartDate,
+        end_date: recurringEndDate || null,
+        next_occurrence: recurringStartDate,
+        is_active: true,
+        auto_generate: autoGenerate,
+        notes: formData.notes || null
+      } : null;
+
+      // Use atomic function for create with tags and optional recurring
+      const { error } = await supabase.rpc('create_transaction_with_tags', {
+        p_payload: payload,
+        p_tag_ids: tagIds,
+        p_recurring_payload: recurringPayload
+      });
+
       if (error) {
         toast.error(error.message);
         return;
       }
-
-      // Insert tag assignments for new transaction
-      if (newTransaction && selectedTags.length > 0) {
-        const tagAssignments = selectedTags.map(tagId => ({
-          transaction_id: newTransaction.id,
-          tag_id: tagId,
-          user_id: user.id
-        }));
-        const { error: tagError } = await supabase.from('transaction_tag_assignments').insert(tagAssignments);
-        if (tagError) {
-          console.error('Error inserting tags:', tagError);
-        }
-      }
-    }
-
-    // If recurring checkbox is checked and not editing, create recurring template
-    if (isRecurring && !editingId) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const recurringPayload = {
-          user_id: user.id,
-          type: formData.type,
-          amount: parseFloat(formData.amount),
-          description: formData.description,
-          wallet_id: formData.wallet_id,
-          to_wallet_id: formData.type === 'transfer' ? (formData.to_wallet_id || null) : null,
-          item_id: formData.item_id || null,
-          project_id: formData.project_id || null,
-          frequency: recurringFrequency,
-          start_date: recurringStartDate,
-          end_date: recurringEndDate || null,
-          next_occurrence: recurringStartDate,
-          is_active: true,
-          auto_generate: autoGenerate,
-          notes: formData.notes || null
-        };
-
-        const { error: recurringError } = await supabase
-          .from('recurring_transactions')
-          .insert(recurringPayload);
-
-        if (recurringError) {
-          console.error('Error creating recurring transaction:', recurringError);
-          toast.error('Transaction saved but recurring setup failed');
-        } else {
-          toast.success('Transaction and recurring template created');
-        }
-      }
-    } else {
-      toast.success(editingId ? "Entry updated" : "Entry added");
+      toast.success(isRecurring ? 'Transaction and recurring template created' : 'Entry added');
     }
 
     setIsModalOpen(false);

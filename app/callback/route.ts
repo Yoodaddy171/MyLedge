@@ -46,7 +46,8 @@ export async function GET(request: Request) {
         console.log(`[Auth Callback] User confirmed: ${user.id}. Running setup...`);
         // Run setup logic directly here instead of fetching internal API
         try {
-          // Check if user already has data
+          // Check if this is a truly new user by checking if they have ANY historical data
+          // This prevents recreating data for users who intentionally deleted their data
           const { count: walletCount } = await supabase
             .from('wallets')
             .select('*', { count: 'exact', head: true })
@@ -57,8 +58,27 @@ export async function GET(request: Request) {
             .select('*', { count: 'exact', head: true })
             .eq('user_id', user.id);
 
-          if ((walletCount === 0 || walletCount === null) && (categoryCount === 0 || categoryCount === null)) {
-            console.log(`[Auth Callback] Initializing default data...`);
+          // Also check if user has any transactions - if they do, they're not a new user
+          const { count: transactionCount } = await supabase
+            .from('transactions')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+
+          // Also check if user has any master items
+          const { count: masterItemCount } = await supabase
+            .from('transaction_items')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+
+          // Only seed default data for truly NEW users who have NO data at all
+          const isNewUser =
+            (walletCount === 0 || walletCount === null) &&
+            (categoryCount === 0 || categoryCount === null) &&
+            (transactionCount === 0 || transactionCount === null) &&
+            (masterItemCount === 0 || masterItemCount === null);
+
+          if (isNewUser) {
+            console.log(`[Auth Callback] New user detected, initializing default data...`);
             await supabase.from('wallets').insert({
               user_id: user.id,
               name: 'Cash Wallet',
@@ -78,6 +98,8 @@ export async function GET(request: Request) {
               { user_id: user.id, name: 'Other Income', type: 'income' },
             ];
             await supabase.from('categories').insert(defaultCategories);
+          } else {
+            console.log(`[Auth Callback] Existing user, skipping default data initialization`);
           }
         } catch (setupErr) {
           console.error("[Auth Callback] Setup logic error:", setupErr);

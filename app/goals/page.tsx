@@ -47,9 +47,17 @@ export default function GoalsPage() {
   const fetchAllGoals = async () => {
     try {
       setLoading(true);
+      // CRITICAL: Get user first and filter by user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('financial_goals')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

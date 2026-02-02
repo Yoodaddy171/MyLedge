@@ -15,9 +15,10 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
+import type { Submission } from '@/contexts/GlobalDataContext';
 
 export default function WorkHubPage() {
-  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('submissions'); 
   
@@ -32,7 +33,14 @@ export default function WorkHubPage() {
   async function fetchData() {
     try {
       setLoading(true);
-      const { data: sub } = await supabase.from('submissions').select('*').order('created_at', { ascending: false });
+      // CRITICAL: Get user first and filter by user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setSubmissions([]);
+        setLoading(false);
+        return;
+      }
+      const { data: sub } = await supabase.from('submissions').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
       setSubmissions(sub || []);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
@@ -112,7 +120,7 @@ export default function WorkHubPage() {
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex justify-center gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => { setEditingId(sub.id); setFormData({...sub}); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg transition-colors"><Edit3 size={14} /></button>
+                                            <button onClick={() => { setEditingId(sub.id); setFormData({ entity: sub.entity, doc_number: sub.doc_number || '', type: sub.type || '', status: sub.status, notes: sub.notes || '' }); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg transition-colors"><Edit3 size={14} /></button>
                                             <button onClick={() => { if(confirm('Delete?')) supabase.from('submissions').delete().eq('id', sub.id).then(fetchData); }} className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg transition-colors"><Trash2 size={14} /></button>
                                         </div>
                                     </td>

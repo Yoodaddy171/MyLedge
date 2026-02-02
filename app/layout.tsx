@@ -33,12 +33,13 @@ import SmoothScroll from "@/components/SmoothScroll";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { GlobalDataProvider } from "@/contexts/GlobalDataContext";
 import NotificationCenter from "@/components/NotificationCenter";
+import type { AppUser } from '@/lib/types';
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();

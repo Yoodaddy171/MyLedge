@@ -28,9 +28,10 @@ import {
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
+import type { AnalyticsData } from '@/lib/types';
 
 export default function AnalyticsPage() {
-  const [data, setData] = useState<any>({
+  const [data, setData] = useState<AnalyticsData>({
     radar: [],
     history: [],
     stats: { score: 0, status: 'Analyzing...', color: 'text-slate-400' }
@@ -43,11 +44,34 @@ export default function AnalyticsPage() {
   async function fetchAnalytics() {
     try {
       setLoading(true);
-      const { data: trx } = await supabase.from('transactions').select('*, item:transaction_items!fk_transactions_item(categories!fk_transaction_items_category(type, name))');
-      const { data: history } = await supabase.from('net_worth_history').select('*').order('recorded_at', { ascending: true });
-      const { data: cashNW } = await supabase.from('net_worth_view').select('*').maybeSingle();
-      const { data: portfolio } = await supabase.from('portfolio_summary_view').select('*');
-      const { data: debts } = await supabase.from('debts').select('*');
+      // CRITICAL: Get user first and filter all queries by user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      const { data: trx } = await supabase
+        .from('transactions')
+        .select('*, item:transaction_items!fk_transactions_item(categories!fk_transaction_items_category(type, name))')
+        .eq('user_id', user.id);
+      const { data: history } = await supabase
+        .from('net_worth_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('recorded_at', { ascending: true });
+      const { data: cashNW } = await supabase
+        .from('net_worth_view')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const { data: portfolio } = await supabase
+        .from('portfolio_summary_view')
+        .select('*')
+        .eq('user_id', user.id);
+      const { data: debts } = await supabase
+        .from('debts')
+        .select('*')
+        .eq('user_id', user.id);
 
       if (!trx) return;
 
@@ -88,9 +112,10 @@ export default function AnalyticsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error("Please login first"); return; }
 
-      const { data: cashNW } = await supabase.from('net_worth_view').select('*').single();
-      const { data: portfolio } = await supabase.from('portfolio_summary_view').select('*');
-      const { data: debts } = await supabase.from('debts').select('*');
+      // CRITICAL: Filter all queries by user_id
+      const { data: cashNW } = await supabase.from('net_worth_view').select('*').eq('user_id', user.id).single();
+      const { data: portfolio } = await supabase.from('portfolio_summary_view').select('*').eq('user_id', user.id);
+      const { data: debts } = await supabase.from('debts').select('*').eq('user_id', user.id);
 
       const totalLiquid = Number(cashNW?.net_worth || 0);
       const totalInvested = portfolio?.reduce((acc, p) => acc + Number(p.current_value), 0) || 0;

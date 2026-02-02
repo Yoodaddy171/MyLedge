@@ -10,28 +10,30 @@ import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
+import type { Debt } from '@/contexts/GlobalDataContext';
+import type { WalletOption } from '@/lib/types';
 
 export default function DebtsPage() {
-  const [debts, setDebts] = useState<any[]>([]);
+  const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [formData, setFormData] = useState({ 
-    name: '', 
+  const [formData, setFormData] = useState({
+    name: '',
     creditor: '',
-    total_amount: '', 
-    remaining_amount: '', 
+    total_amount: '',
+    remaining_amount: '',
     monthly_payment: '',
     interest_rate: '',
-    due_date: '', 
-    notes: '' 
+    due_date: '',
+    notes: ''
   });
 
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
-  const [selectedDebtForPay, setSelectedDebtForPay] = useState<any>(null);
+  const [selectedDebtForPay, setSelectedDebtForPay] = useState<Debt | null>(null);
   const [payForm, setPayForm] = useState({ amount: '', wallet_id: '', date: new Date().toISOString().split('T')[0] });
-  const [wallets, setWallets] = useState<any[]>([]);
+  const [wallets, setWallets] = useState<WalletOption[]>([]);
 
   useBodyScrollLock(isModalOpen || isPayModalOpen);
 
@@ -41,7 +43,14 @@ export default function DebtsPage() {
   }, []);
 
   async function fetchWallets() {
-    const { data } = await supabase.from('wallets').select('id, name').eq('is_active', true);
+    // CRITICAL: Filter by user_id
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from('wallets')
+      .select('id, name')
+      .eq('user_id', user.id)
+      .eq('is_active', true);
     setWallets(data || []);
   }
 
@@ -49,10 +58,20 @@ export default function DebtsPage() {
   async function fetchDebts() {
     try {
       setLoading(true);
-      const { data, error } = await supabase.from('debts').select('*').order('remaining_amount', { ascending: false });
+      // CRITICAL: Filter by user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('debts')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('remaining_amount', { ascending: false });
       if (error) throw error;
       setDebts(data || []);
-    } catch (err: any) { toast.error("Failed to load debts"); }
+    } catch (err) { toast.error("Failed to load debts"); }
     finally { setLoading(false); }
   }
 
@@ -256,7 +275,7 @@ export default function DebtsPage() {
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
                     <label className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1 block">Selected Loan</label>
                     <p className="font-bold text-sm text-slate-900">{selectedDebtForPay?.name}</p>
-                    <p className="text-[10px] text-red-500 font-bold mt-0.5">Left: {new Intl.NumberFormat('id-ID').format(selectedDebtForPay?.remaining_amount)}</p>
+                    <p className="text-[10px] text-red-500 font-bold mt-0.5">Left: {new Intl.NumberFormat('id-ID').format(selectedDebtForPay?.remaining_amount ?? 0)}</p>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Amount</label>

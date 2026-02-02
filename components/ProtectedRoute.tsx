@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Loader2 } from 'lucide-react';
+import type { AppUser } from '@/lib/types';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -87,7 +88,7 @@ function LoadingScreen() {
 
 // Hook for getting current user in components
 export function useAuth() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

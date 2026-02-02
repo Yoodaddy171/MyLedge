@@ -3,15 +3,16 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
-  Landmark, Search, Wallet, Plus, Edit3, Trash2, X, TrendingUp, TrendingDown, History, ChevronRight, ArrowUpRight, ArrowDownRight, Calendar as CalendarIcon, Eye
+  Landmark, Search, Wallet as WalletIcon, Plus, Edit3, Trash2, X, TrendingUp, TrendingDown, History, ChevronRight, ArrowUpRight, ArrowDownRight, Calendar as CalendarIcon, Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import Pagination from '@/components/Pagination';
+import type { WalletWithBalance, BankActivity } from '@/lib/types';
 
 export default function BanksPage() {
-  const [banks, setBanks] = useState<any[]>([]);
+  const [banks, setBanks] = useState<WalletWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -20,8 +21,8 @@ export default function BanksPage() {
   const [formData, setFormData] = useState({ name: '', type: 'bank', initial_balance: '0', currency: 'IDR' });
 
   // Activity Modal State
-  const [selectedBankForActivity, setSelectedBankForActivity] = useState<any>(null);
-  const [bankActivity, setBankActivity] = useState<any[]>([]);
+  const [selectedBankForActivity, setSelectedBankForActivity] = useState<WalletWithBalance | null>(null);
+  const [bankActivity, setBankActivity] = useState<BankActivity[]>([]);
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [activitySearch, setActivitySearch] = useState('');
   const [activityPage, setActivityPage] = useState(1);
@@ -41,9 +42,17 @@ export default function BanksPage() {
   async function fetchBanks() {
     try {
       setLoading(true);
+      // CRITICAL: Get user first and filter by user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('wallet_balances_view')
         .select('*')
+        .eq('user_id', user.id)
         .order('name', { ascending: true });
 
       if (error) throw error;
@@ -53,27 +62,35 @@ export default function BanksPage() {
         balance: w.current_balance,
         income: w.total_income,
         expense: w.total_expense,
-        trxCount: 0 
+        trxCount: 0
       }));
 
       setBanks(enrichedBanks || []);
-    } catch (err: any) { 
+    } catch (err) {
       console.error(err);
-      toast.error("Failed to load accounts"); 
-    } finally { 
-      setLoading(false); 
+      toast.error("Failed to load accounts");
+    } finally {
+      setLoading(false);
     }
   }
 
   async function fetchBankActivity(walletId: number) {
     try {
       setLoadingActivity(true);
+      // CRITICAL: Get user first and filter by user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoadingActivity(false);
+        return;
+      }
+
       let query = supabase
         .from('transactions')
         .select(`
           *,
           item:transaction_items!fk_transactions_item(name, categories!fk_transaction_items_category(name))
         `, { count: 'exact' })
+        .eq('user_id', user.id)
         .eq('wallet_id', walletId);
 
       if (activitySearch) {
@@ -154,7 +171,7 @@ export default function BanksPage() {
     else setSelectedIds([...selectedIds, id]);
   };
 
-  const openActivityModal = (bank: any) => {
+  const openActivityModal = (bank: WalletWithBalance) => {
     setActivitySearch('');
     setActivityPage(1);
     setSelectedBankForActivity(bank);
@@ -180,7 +197,7 @@ export default function BanksPage() {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8">
         <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center gap-3 md:gap-4 group hover:border-blue-100 transition-all">
           <div className="bg-blue-50 text-blue-600 p-2 rounded-xl w-fit">
-            <Wallet size={18} />
+            <WalletIcon size={18} />
           </div>
           <div className="min-w-0">
             <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Cash</p>
@@ -259,8 +276,8 @@ export default function BanksPage() {
                       </div>
                     </td>
                     <td className="px-6 py-3 text-right">
-                      <span className={`font-bold text-sm ${item.balance >= 0 ? 'text-slate-900' : 'text-red-600'}`}>
-                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(item.balance || 0)}
+                      <span className={`font-bold text-sm ${(item.balance ?? 0) >= 0 ? 'text-slate-900' : 'text-red-600'}`}>
+                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(item.balance ?? 0)}
                       </span>
                     </td>
                     <td className="px-6 py-3">

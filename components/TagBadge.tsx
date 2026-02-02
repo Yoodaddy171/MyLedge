@@ -7,7 +7,7 @@ interface TagBadgeProps {
     id: any;
     name: string;
     color: string;
-    icon?: string;
+    icon?: string | null;
   };
   onRemove?: () => void;
   size?: 'sm' | 'md';

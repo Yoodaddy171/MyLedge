@@ -24,10 +24,12 @@ import { useRouter } from 'next/navigation';
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
+import type { CategorySpending } from '@/lib/types';
+
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 export default function DetailedReportPage() {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<CategorySpending[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -36,7 +38,14 @@ export default function DetailedReportPage() {
   async function fetchReportData() {
     try {
       setLoading(true);
-      const { data: trx } = await supabase.from('transactions').select('*, item:transaction_items!fk_transactions_item(name, categories!fk_transaction_items_category(name))');
+      // CRITICAL: Get user first and filter by user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setData([]);
+        setLoading(false);
+        return;
+      }
+      const { data: trx } = await supabase.from('transactions').select('*, item:transaction_items!fk_transactions_item(name, categories!fk_transaction_items_category(name))').eq('user_id', user.id);
       if (!trx) return;
       const grouped = trx.reduce((acc: any, curr: any) => {
         const item: any = Array.isArray(curr.item) ? curr.item[0] : curr.item;

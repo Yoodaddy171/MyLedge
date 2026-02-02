@@ -4,27 +4,29 @@ import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { formatDisplayAmount } from '@/lib/utils';
 import {
-  TrendingUp, Coins, Plus, RefreshCcw, ArrowUpRight, ArrowDownRight, Download, Trash2, X, Edit3, Activity, Briefcase, History, Wallet, PieChart as PieIcon
+  TrendingUp, Coins, Plus, RefreshCcw, ArrowUpRight, ArrowDownRight, Download, Trash2, X, Edit3, Activity, Briefcase, History, Wallet as WalletIcon, PieChart as PieIcon
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
+import type { Asset } from '@/contexts/GlobalDataContext';
+import type { AssetTransaction, WalletOption } from '@/lib/types';
 
 const COLORS = ['#F59E0B', '#3B82F6', '#10B981', '#8B5CF6'];
 
 export default function InvestmentsPage() {
-  const [assets, setAssets] = useState<any[]>([]);
-  const [history, setHistory] = useState<any[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [history, setHistory] = useState<AssetTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [syncing, setSyncing] = useState(false);
-  
+
   const [formData, setFormData] = useState({ type: 'stock', symbol: '', quantity: '', avg_buy_price: '', wallet_id: '' });
-  const [wallets, setWallets] = useState<any[]>([]);
+  const [wallets, setWallets] = useState<WalletOption[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useBodyScrollLock(isModalOpen);
@@ -36,22 +38,44 @@ export default function InvestmentsPage() {
   }, []);
 
   async function fetchWallets() {
-    const { data } = await supabase.from('wallets').select('id, name').eq('is_active', true);
+    // CRITICAL: Filter by user_id
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from('wallets').select('id, name').eq('user_id', user.id).eq('is_active', true);
     setWallets(data || []);
   }
 
   async function fetchAssets() {
     try {
       setLoading(true);
-      const { data, error } = await supabase.from('assets').select('*').order('type', { ascending: true }).order('symbol', { ascending: true });
+      // CRITICAL: Filter by user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('assets')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('type', { ascending: true })
+        .order('symbol', { ascending: true });
       if (error) throw error;
       setAssets(data || []);
-    } catch (err: any) { toast.error("Failed to load investments"); }
+    } catch (err) { toast.error("Failed to load investments"); }
     finally { setLoading(false); }
   }
 
   async function fetchHistory() {
-    const { data } = await supabase.from('asset_transactions').select('*, asset:assets(symbol, name)').order('recorded_at', { ascending: false }).limit(10);
+    // CRITICAL: Filter by user_id
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from('asset_transactions')
+      .select('*, asset:assets(symbol, name)')
+      .eq('user_id', user.id)
+      .order('recorded_at', { ascending: false })
+      .limit(10);
     setHistory(data || []);
   }
 

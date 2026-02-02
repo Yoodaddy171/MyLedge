@@ -13,9 +13,10 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts';
+import type { ForecastDataPoint } from '@/lib/types';
 
 export default function CashFlowForecastPage() {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<ForecastDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -26,18 +27,28 @@ export default function CashFlowForecastPage() {
   async function calculateForecast() {
     try {
       setLoading(true);
-      
+
+      // CRITICAL: Get user first and filter all queries by user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setData([]);
+        setLoading(false);
+        return;
+      }
+
       const { data: wallets } = await supabase
         .from('wallet_balances_view')
         .select('current_balance')
+        .eq('user_id', user.id)
         .eq('is_active', true)
         .eq('is_excluded_from_total', false);
-        
+
       const initialBalance = wallets?.reduce((sum, w) => sum + Number(w.current_balance), 0) || 0;
 
       const { data: recurring } = await supabase
         .from('recurring_transactions')
         .select('*')
+        .eq('user_id', user.id)
         .eq('is_active', true);
 
       if (!recurring) {

@@ -410,7 +410,7 @@ export default function RecurringTransactionsPage() {
                 required={formData.type === 'transfer'}
               >
                 <option value="">Select Destination Wallet</option>
-                {wallets.filter(w => w.id !== formData.wallet_id).map((wallet) => (
+                {wallets.filter(w => w.id.toString() !== formData.wallet_id).map((wallet) => (
                   <option key={wallet.id} value={wallet.id}>
                     {wallet.name}
                   </option>

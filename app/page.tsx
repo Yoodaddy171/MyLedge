@@ -29,12 +29,13 @@ import BankAccounts from '@/components/dashboard/BankAccounts';
 import PriorityGoals from '@/components/dashboard/PriorityGoals';
 import GrowthIndex from '@/components/dashboard/GrowthIndex';
 import GoalProgressCard from '@/components/dashboard/GoalProgressCard';
-import { useGlobalData } from '@/contexts/GlobalDataContext';
+import { useGlobalData, Wallet, Goal, Transaction } from '@/contexts/GlobalDataContext';
+import type { DashboardStats, ChartDataPoint, Task, BankActivity } from '@/lib/types';
 
 export default function Dashboard() {
   const { wallets, debts, recurringTransactions, budgetAlerts, refreshData } = useGlobalData();
 
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<DashboardStats>({
     income: 0,
     expense: 0,
     balance: 0,
@@ -46,22 +47,22 @@ export default function Dashboard() {
     totalAssets: 0,
     totalDebt: 0
   });
-  const [recentTrx, setRecentTrx] = useState<any[]>([]);
-  const [upcomingTasks, setUpcomingTasks] = useState<any[]>([]);
-  const [goals, setGoals] = useState<any[]>([]);
+  const [recentTrx, setRecentTrx] = useState<Transaction[]>([]);
+  const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkingBudgets, setCheckingBudgets] = useState(false);
-  
+
   // Activity Modal State
-  const [selectedBankForActivity, setSelectedBankForActivity] = useState<any>(null);
-  const [bankActivity, setBankActivity] = useState<any[]>([]);
+  const [selectedBankForActivity, setSelectedBankForActivity] = useState<Wallet | null>(null);
+  const [bankActivity, setBankActivity] = useState<BankActivity[]>([]);
   const [loadingActivity, setLoadingActivity] = useState(false);
-  
+
   // Chart States
   const [viewMode, setViewMode] = useState<'weekly' | 'monthly' | 'yearly'>('weekly');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [chartData, setChartData] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loadingChart, setLoadingChart] = useState(false);
 
   // Notification & Pop-up States
@@ -82,9 +83,9 @@ export default function Dashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Only check once per day
+      // Only check once per day - use ISO date format (YYYY-MM-DD) for timezone consistency
       const lastCheck = localStorage.getItem('last_recurring_check');
-      const today = new Date().toDateString();
+      const today = new Date().toISOString().split('T')[0];
 
       if (lastCheck !== today) {
         try {
@@ -118,9 +119,9 @@ export default function Dashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Only check once per day
+      // Only check once per day - use ISO date format (YYYY-MM-DD) for timezone consistency
       const lastBudgetCheck = localStorage.getItem('last_budget_check');
-      const today = new Date().toDateString();
+      const today = new Date().toISOString().split('T')[0];
 
       if (lastBudgetCheck !== today) {
         try {
@@ -152,6 +153,14 @@ export default function Dashboard() {
     try {
       setLoading(true);
 
+      // CRITICAL: Get authenticated user first
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('No authenticated user');
+        setLoading(false);
+        return;
+      }
+
       const [
         { data: netWorthView },
         { data: portfolioView },
@@ -160,18 +169,26 @@ export default function Dashboard() {
         { data: allTransactions },
         { data: activeGoals }
       ] = await Promise.all([
-        supabase.from('net_worth_view').select('*').maybeSingle(),
-        supabase.from('portfolio_summary_view').select('*'),
+        // ALL QUERIES MUST FILTER BY USER_ID
+        supabase.from('net_worth_view').select('*').eq('user_id', user.id).maybeSingle(),
+        supabase.from('portfolio_summary_view').select('*').eq('user_id', user.id),
         supabase.from('transactions')
           .select('*, item:transaction_items!fk_transactions_item(name)')
+          .eq('user_id', user.id)
           .order('date', { ascending: false })
           .limit(5),
-        supabase.from('tasks').select('*').order('deadline', { ascending: true }).limit(10),
+        supabase.from('tasks')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('deadline', { ascending: true })
+          .limit(10),
         supabase.from('transactions')
           .select('wallet_id, amount, type, date')
+          .eq('user_id', user.id)
           .gte('date', new Date(new Date().setDate(new Date().getDate() - 30)).toISOString()),
         supabase.from('financial_goals')
           .select('*')
+          .eq('user_id', user.id)
           .eq('status', 'active')
           .order('deadline', { ascending: true })
       ]);
@@ -215,6 +232,14 @@ export default function Dashboard() {
     if (!wallets.length) return;
     try {
       setLoadingChart(true);
+
+      // CRITICAL: Get authenticated user first
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        setLoadingChart(false);
+        return;
+      }
+
       let startDate, endDate;
 
       if (viewMode === 'weekly') {
@@ -232,6 +257,7 @@ export default function Dashboard() {
       const { data: trxs } = await supabase
         .from('transactions')
         .select('wallet_id, amount, type, date')
+        .eq('user_id', user.id)
         .gte('date', startDate.toISOString().split('T')[0])
         .lte('date', endDate.toISOString().split('T')[0]);
 
@@ -287,20 +313,30 @@ export default function Dashboard() {
   async function fetchBankActivity(walletId: number) {
     try {
       setLoadingActivity(true);
+
+      // CRITICAL: Get authenticated user first
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        setLoadingActivity(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('transactions')
         .select(`
           *,
           item:transaction_items!fk_transactions_item(name, categories!fk_transaction_items_category(name))
         `)
+        .eq('user_id', user.id)
         .eq('wallet_id', walletId)
         .order('date', { ascending: false })
         .limit(20);
 
       if (error) throw error;
       setBankActivity(data || []);
-    } catch (err: any) {
-      console.error(err);
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      console.error(error);
     } finally {
       setLoadingActivity(false);
     }
@@ -341,7 +377,7 @@ export default function Dashboard() {
   };
 
   const health = getHealthStatus(stats.savingsRate);
-  const urgentTasks = upcomingTasks.filter(t => t.priority === 'Urgent');
+  const urgentTasks = upcomingTasks.filter(t => t.priority === 'urgent');
 
   // Filter critical budget alerts (threshold >= 100%)
   const criticalAlerts = budgetAlerts.filter(alert => alert.threshold_percent >= 100).slice(0, 3);
@@ -365,7 +401,7 @@ export default function Dashboard() {
               <div className="w-full space-y-3 mb-6 max-h-[150px] overflow-y-auto pr-1 custom-scrollbar">
                 {upcomingTasks.slice(0, 3).map(t => (
                   <div key={t.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 text-left">
-                    <div className={`w-2 h-2 rounded-full shrink-0 ${t.priority === 'Urgent' ? 'bg-red-500 animate-pulse' : 'bg-blue-500'}`} />
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${t.priority === 'urgent' ? 'bg-red-500 animate-pulse' : 'bg-blue-500'}`} />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold truncate text-slate-900">{t.title}</p>
                       <p className="text-[10px] text-slate-400 mt-0.5">{t.deadline ? new Date(t.deadline).toLocaleDateString() : 'No Deadline'}</p>

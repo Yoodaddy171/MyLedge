@@ -10,10 +10,11 @@ import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
+import type { TransactionItem, Category } from '@/contexts/GlobalDataContext';
 
 export default function MasterDataPage() {
-  const [items, setItems] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [items, setItems] = useState<TransactionItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -30,14 +31,27 @@ export default function MasterDataPage() {
   }, []);
 
   async function fetchCategories() {
-    const { data } = await supabase.from('categories').select('*').order('name');
+    // CRITICAL: Get user first and filter by user_id
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setCategories([]);
+      return;
+    }
+    const { data } = await supabase.from('categories').select('*').eq('user_id', user.id).order('name');
     setCategories(data || []);
   }
 
   async function fetchMasterData() {
     try {
       setLoading(true);
-      const { data, error } = await supabase.from('transaction_items').select('*, categories!fk_transaction_items_category(name, type)').order('code', { ascending: true });
+      // CRITICAL: Get user first and filter by user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setItems([]);
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase.from('transaction_items').select('*, categories!fk_transaction_items_category(name, type)').eq('user_id', user.id).order('code', { ascending: true });
       if (error) throw error;
       setItems(data || []);
     } catch (err) { console.error(err); }

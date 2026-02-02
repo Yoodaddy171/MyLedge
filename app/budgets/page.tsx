@@ -9,10 +9,12 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
+import type { Category } from '@/contexts/GlobalDataContext';
+import type { BudgetWithSpent } from '@/lib/types';
 
 export default function BudgetsPage() {
-  const [budgets, setBudgets] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [budgets, setBudgets] = useState<BudgetWithSpent[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -31,13 +33,26 @@ export default function BudgetsPage() {
   async function fetchData() {
     try {
       setLoading(true);
+      // CRITICAL: Get user first and filter all queries by user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
       const currentMonth = new Date().getMonth() + 1;
       const currentYear = new Date().getFullYear();
 
-      const { data: cats } = await supabase.from('categories').select('*').eq('type', 'expense').order('name');
+      const { data: cats } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('type', 'expense')
+        .order('name');
       const { data: bud } = await supabase
         .from('budget_tracking_view')
         .select('*')
+        .eq('user_id', user.id)
         .eq('month', currentMonth)
         .eq('year', currentYear)
         .order('percentage_used', { ascending: false });
@@ -130,9 +145,9 @@ export default function BudgetsPage() {
                 <div className="flex justify-between items-end mb-3">
                   <div>
                     <p className={`text-sm md:text-lg font-bold ${isOver ? 'text-red-600' : 'text-slate-900'}`}>
-                      {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(b.spent_amount)}
+                      {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(b.spent_amount ?? 0)}
                     </p>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">of {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(b.budget_amount)}</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">of {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(b.budget_amount ?? 0)}</p>
                   </div>
                   <div className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${isOver ? 'bg-red-50 text-red-600 shadow-[0_0_8px_rgba(239,68,68,0.2)]' : 'bg-slate-50 text-slate-600'}`}>
                     {Number(percent).toFixed(0)}%

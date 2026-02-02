@@ -8,18 +8,19 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
+import type { Task, TaskCategory, ProjectOption, SubmissionOption } from '@/lib/types';
 
 export default function TasksPage() {
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  
-  const [taskCategories, setTaskCategories] = useState<any[]>([]);
-  const [projects, setProjects] = useState<any[]>([]);
-  const [submissions, setSubmissions] = useState<any[]>([]);
+
+  const [taskCategories, setTaskCategories] = useState<TaskCategory[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [submissions, setSubmissions] = useState<SubmissionOption[]>([]);
   
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
@@ -46,10 +47,14 @@ export default function TasksPage() {
 
   async function fetchSupportData() {
     try {
+      // CRITICAL: Get user first and filter all queries by user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const [cats, projs, subs] = await Promise.all([
-        supabase.from('task_categories').select('*').order('name', { ascending: true }),
-        supabase.from('projects').select('id, name').neq('status', 'completed'),
-        supabase.from('submissions').select('id, entity, doc_number').neq('status', 'Done')
+        supabase.from('task_categories').select('*').eq('user_id', user.id).order('name', { ascending: true }),
+        supabase.from('projects').select('id, name').eq('user_id', user.id).neq('status', 'completed'),
+        supabase.from('submissions').select('id, entity, doc_number').eq('user_id', user.id).neq('status', 'Done')
       ]);
 
       setTaskCategories(cats.data || []);
@@ -61,17 +66,25 @@ export default function TasksPage() {
   async function fetchTasks() {
     try {
       setLoading(true);
+      // CRITICAL: Get user first and filter by user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('tasks')
         .select(`
-          *, 
+          *,
           category:task_categories!fk_tasks_category(name),
           project:projects(name),
           submission:submissions(entity, doc_number)
         `)
+        .eq('user_id', user.id)
         .order('status', { ascending: true })
         .order('deadline', { ascending: true });
-        
+
       if (error) throw error;
 
       const mappedTasks = (data || []).map(t => ({
@@ -156,11 +169,11 @@ export default function TasksPage() {
     } else { toast.error(error.message); }
   };
 
-  const toggleStatus = async (task: any) => {
-    let newStatus = 'todo';
+  const toggleStatus = async (task: Task) => {
+    let newStatus: Task['status'] = 'todo';
     if (task.status === 'todo') newStatus = 'in_progress';
     else if (task.status === 'in_progress') newStatus = 'done';
-    
+
     setTasks(tasks.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
     await supabase.from('tasks').update({ status: newStatus }).eq('id', task.id);
   };
@@ -176,7 +189,7 @@ export default function TasksPage() {
     todo: tasks.filter(t => t.status === 'todo').length,
     inProgress: tasks.filter(t => t.status === 'in_progress').length,
     done: tasks.filter(t => t.status === 'done').length,
-    urgent: tasks.filter(t => t.priority === 'Urgent' && t.status !== 'done').length
+    urgent: tasks.filter(t => t.priority === 'urgent' && t.status !== 'done').length
   };
 
   return (
@@ -248,7 +261,7 @@ export default function TasksPage() {
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-tighter ${task.priority === 'Urgent' ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-500'}`}>{task.priority}</span>
+                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-tighter ${task.priority === 'urgent' ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-500'}`}>{task.priority}</span>
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{task.category}</span>
                   {task.projectName && (
                     <span className="flex items-center gap-1 text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 uppercase tracking-tighter">
@@ -265,15 +278,19 @@ export default function TasksPage() {
               </div>
 
               <div className="flex gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => { 
-                    setEditingId(task.id); 
+                <button onClick={() => {
+                    setEditingId(task.id);
                     setFormData({
-                        ...task, 
+                        title: task.title,
+                        category: task.category || '',
+                        priority: task.priority,
+                        status: task.status,
                         deadline: task.deadline ? task.deadline.split('T')[0] : '',
+                        notes: task.notes || '',
                         project_id: task.project_id?.toString() || '',
                         submission_id: task.submission_id?.toString() || ''
-                    }); 
-                    setIsModalOpen(true); 
+                    });
+                    setIsModalOpen(true);
                 }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit3 size={14} /></button>
                 <button onClick={() => handleDeleteSingle(task.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={14} /></button>
               </div>
