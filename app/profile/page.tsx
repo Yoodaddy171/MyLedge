@@ -89,7 +89,7 @@ export default function ProfilePage() {
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const { error: updateError } = await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
       if (updateError) throw updateError;
-      
+
       fetchProfileData();
     } catch (err: any) {
       alert("Upload failed: " + err.message);
@@ -111,7 +111,7 @@ export default function ProfilePage() {
     <div className="max-w-4xl mx-auto pb-20">
       <header className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">Account Settings</h1>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-blue-600">Account Settings</h1>
           <p className="text-slate-500 text-xs md:text-sm mt-0.5">Manage your identity and security</p>
         </div>
         {updating && (
@@ -161,7 +161,7 @@ export default function ProfilePage() {
               <p className="text-slate-500 font-bold flex items-center justify-center md:justify-start gap-2 mb-6 text-[10px] md:text-xs uppercase tracking-wider">
                 <Mail size={12} className="text-slate-400" /> {user?.email}
               </p>
-              
+
               <div className="flex flex-wrap justify-center md:justify-start gap-3">
                 <div className="px-4 py-2 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-2 shadow-sm">
                   <Landmark size={14} className="text-slate-400" />
@@ -190,7 +190,7 @@ export default function ProfilePage() {
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 group-hover:rotate-12 transition-all duration-700"><Trophy size={100} /></div>
               <h3 className="text-base md:text-lg font-bold text-slate-100 mb-1">Elite Milestone</h3>
               <p className="text-[10px] text-slate-400 mb-6 font-bold uppercase tracking-widest">Rank: <span className="text-blue-400 font-black">{persona}</span></p>
-              
+
               <div className="mt-auto">
                 <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest">
                   <span>Engagement</span>

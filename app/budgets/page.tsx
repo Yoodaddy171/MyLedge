@@ -106,7 +106,7 @@ export default function BudgetsPage() {
     <div className="max-w-6xl mx-auto pb-20">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">Budget Planner</h1>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-blue-600">Budget Planner</h1>
           <p className="text-slate-500 text-xs md:text-sm mt-0.5 font-bold uppercase tracking-widest">Spending Limits</p>
         </div>
         <button onClick={() => { setEditingId(null); setFormData({ category_id: '', amount: '' }); setIsModalOpen(true); }} className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 uppercase tracking-widest">

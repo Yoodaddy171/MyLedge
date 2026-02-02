@@ -100,27 +100,97 @@ export default function MasterDataPage() {
         const wsname = wb.SheetNames.find(n => n.toLowerCase().includes('cat') || n.toLowerCase().includes('master')) || wb.SheetNames[0];
         const rawData: any[] = XLSX.utils.sheet_to_json(wb.Sheets[wsname]);
         if (rawData.length === 0) { toast.error("Excel is empty"); return; }
+
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const uniqueCats = Array.from(new Set(rawData.map(r => r['kategori']))).filter(Boolean);
-        const catPayload = uniqueCats.map(catName => {
-          const row = rawData.find(r => r['kategori'] === catName);
-          return { user_id: user.id, name: String(catName).trim(), type: String(row['sifat transaksi']).toLowerCase().includes('income') ? 'income' : 'expense' };
+
+        // Helper to get value from row with case-insensitive key matching
+        const getValue = (row: any, key: string): string => {
+          const normalizedKey = key.toLowerCase().trim();
+          for (const k of Object.keys(row)) {
+            if (k.toLowerCase().trim() === normalizedKey) {
+              return String(row[k] || '').trim();
+            }
+          }
+          return '';
+        };
+
+        // Build unique categories with their types
+        const catMap = new Map<string, 'income' | 'expense'>();
+        rawData.forEach(r => {
+          const catName = getValue(r, 'kategori');
+          if (catName) {
+            const sifat = getValue(r, 'sifat transaksi');
+            const type: 'income' | 'expense' = sifat.toLowerCase().includes('income') ? 'income' : 'expense';
+            catMap.set(`${catName}|${type}`, type);
+          }
         });
-        await supabase.from('categories').upsert(catPayload, { onConflict: 'user_id,name' });
-        const { data: dbCats } = await supabase.from('categories').select('id, name');
-        const catMap = new Map(dbCats?.map(c => [c.name, c.id]));
-        const itemPayload = rawData.map(r => ({ user_id: user.id, name: String(r['nama transaksi'] || '').trim(), code: String(r['kode transaksi'] || '').trim(), category_id: catMap.get(String(r['kategori']).trim()) || null })).filter(i => i.name && i.code && i.category_id);
-        if (itemPayload.length > 0) await supabase.from('transaction_items').upsert(itemPayload, { onConflict: 'user_id,code' });
-        toast.success("Master data sync complete"); fetchMasterData(); fetchCategories(); if (masterInputRef.current) masterInputRef.current.value = "";
-      } catch (err: any) { toast.error(err.message); if (masterInputRef.current) masterInputRef.current.value = ""; }
+
+        if (catMap.size === 0) {
+          toast.error("No categories found. Check column headers: 'kategori', 'sifat transaksi'");
+          if (masterInputRef.current) masterInputRef.current.value = "";
+          return;
+        }
+
+        const catPayload = Array.from(catMap.entries()).map(([key, type]) => {
+          const name = key.split('|')[0];
+          return { user_id: user.id, name, type };
+        });
+
+        // Insert categories - use ignoreDuplicates to skip existing ones
+        const { error: catError } = await supabase
+          .from('categories')
+          .upsert(catPayload, {
+            onConflict: 'user_id,name,type',
+            ignoreDuplicates: false
+          });
+
+        if (catError) {
+          console.error('Category upsert error:', catError);
+          throw catError;
+        }
+
+        // Fetch categories with type to properly match
+        const { data: dbCats } = await supabase.from('categories').select('id, name, type').eq('user_id', user.id);
+        const catIdMap = new Map(dbCats?.map(c => [`${c.name}|${c.type}`, c.id]));
+
+        const itemPayload = rawData.map(r => {
+          const catName = getValue(r, 'kategori');
+          const sifat = getValue(r, 'sifat transaksi');
+          const type: 'income' | 'expense' = sifat.toLowerCase().includes('income') ? 'income' : 'expense';
+          return {
+            user_id: user.id,
+            name: getValue(r, 'nama transaksi'),
+            code: getValue(r, 'kode transaksi'),
+            category_id: catIdMap.get(`${catName}|${type}`) || null
+          };
+        }).filter(i => i.name && i.code && i.category_id);
+
+        if (itemPayload.length === 0) {
+          toast.error("No valid items found. Check columns: 'nama transaksi', 'kode transaksi'");
+          if (masterInputRef.current) masterInputRef.current.value = "";
+          return;
+        }
+
+        const { error: itemError } = await supabase.from('transaction_items').upsert(itemPayload, { onConflict: 'user_id,code' });
+        if (itemError) throw itemError;
+
+        toast.success(`Synced ${catPayload.length} categories and ${itemPayload.length} items`);
+        fetchMasterData();
+        fetchCategories();
+        if (masterInputRef.current) masterInputRef.current.value = "";
+      } catch (err: any) {
+        console.error('Upload error:', err);
+        toast.error(err.message || 'Upload failed');
+        if (masterInputRef.current) masterInputRef.current.value = "";
+      }
     };
     reader.readAsArrayBuffer(file);
   };
 
-  const filtered = items.filter(i => 
-    i.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    i.code.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filtered = items.filter(i =>
+    i.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    i.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
     i.categories?.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -128,7 +198,7 @@ export default function MasterDataPage() {
     <div className="max-w-6xl mx-auto pb-20">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">Master Data</h1>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-blue-600">Master Data</h1>
           <p className="text-slate-500 text-xs md:text-sm mt-0.5">Configure transaction mapping</p>
         </div>
         <button onClick={() => { setEditingId(null); setFormData({ name: '', code: '', category_id: '' }); setIsModalOpen(true); }} className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 shadow-lg flex items-center justify-center gap-2 active:scale-95 uppercase tracking-widest">
@@ -139,9 +209,7 @@ export default function MasterDataPage() {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8">
         <StatCard label="Total Items" val={items.length} icon={<Tag size={16} className="text-blue-500" />} />
         <StatCard label="Inbound" val={items.filter(i => i.categories?.type === 'income').length} icon={<TrendingUp size={16} className="text-emerald-500" />} />
-        <div className="hidden md:flex">
-            <StatCard label="Outbound" val={items.filter(i => i.categories?.type === 'expense').length} icon={<TrendingDown size={16} className="text-red-500" />} />
-        </div>
+        <StatCard label="Outbound" val={items.filter(i => i.categories?.type === 'expense').length} icon={<TrendingDown size={16} className="text-red-500" />} />
       </div>
 
       <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-100 shadow-sm mb-8 flex flex-col md:flex-row items-center justify-between gap-4">

@@ -28,12 +28,12 @@ export default function TransactionsPage() {
   } = useGlobalData();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [totalItems, setTotalItems] = useState(0); 
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  
+
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     type: 'expense',
@@ -97,14 +97,14 @@ export default function TransactionsPage() {
 
       let categoryItemIds: number[] | null = null;
       if (filterCategory) {
-         // Filter transaction_items by user_id as well
-         const { data: items } = await supabase
-           .from('transaction_items')
-           .select('id')
-           .eq('user_id', user.id)
-           .eq('category_id', filterCategory);
-         if (!items || items.length === 0) { setTransactions([]); setTotalItems(0); setLoading(false); return; }
-         categoryItemIds = items.map(i => i.id);
+        // Filter transaction_items by user_id as well
+        const { data: items } = await supabase
+          .from('transaction_items')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('category_id', filterCategory);
+        if (!items || items.length === 0) { setTransactions([]); setTotalItems(0); setLoading(false); return; }
+        categoryItemIds = items.map(i => i.id);
       }
 
       // If filtering by tag, first get transaction IDs that have this tag
@@ -269,19 +269,19 @@ export default function TransactionsPage() {
 
   const resetForm = () => {
     setFormData({
-        date: new Date().toISOString().split('T')[0],
-        type: 'expense',
-        item_id: '',
-        wallet_id: '',
-        to_wallet_id: '',
-        project_id: '',
-        amount: '',
-        description: '',
-        notes: '',
-        debt_id: '',
-        asset_id: '',
-        submission_id: '',
-        goal_id: ''
+      date: new Date().toISOString().split('T')[0],
+      type: 'expense',
+      item_id: '',
+      wallet_id: '',
+      to_wallet_id: '',
+      project_id: '',
+      amount: '',
+      description: '',
+      notes: '',
+      debt_id: '',
+      asset_id: '',
+      submission_id: '',
+      goal_id: ''
     });
     setSelectedTags([]);
     setIsRecurring(false);
@@ -322,7 +322,7 @@ export default function TransactionsPage() {
   const handleDeleteSingle = async (id: number) => {
     if (!confirm("Delete this entry?")) return;
     const { error } = await supabase.from('transactions').delete().eq('id', id);
-    if (!error) { toast.success("Entry removed"); fetchTransactions(); refreshGlobalData(); } 
+    if (!error) { toast.success("Entry removed"); fetchTransactions(); refreshGlobalData(); }
     else { toast.error(error.message); }
   };
 
@@ -362,7 +362,7 @@ export default function TransactionsPage() {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">Transactions</h1>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-blue-600">Transactions</h1>
           <p className="text-slate-500 text-xs md:text-sm mt-0.5">Manage your financial records</p>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
@@ -384,7 +384,7 @@ export default function TransactionsPage() {
             {isFiltersOpen ? <ChevronUp size={16} className="text-slate-900" /> : <ChevronDown size={16} className="text-slate-900" />}
           </div>
         </div>
-        
+
         <AnimatePresence>
           {isFiltersOpen && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
@@ -421,7 +421,7 @@ export default function TransactionsPage() {
         <SummaryCard title="Income" value={filteredSummary.income} icon={<TrendingUp size={16} />} color="text-emerald-600" bg="bg-emerald-50" />
         <SummaryCard title="Expenses" value={filteredSummary.expense} icon={<TrendingDown size={16} />} color="text-red-600" bg="bg-red-50" />
         <div className="col-span-2 md:col-span-1">
-            <SummaryCard title="Net Flow" value={netBalance} icon={<Activity size={16} />} color={netBalance >= 0 ? "text-blue-600" : "text-amber-600"} bg={netBalance >= 0 ? "bg-blue-50" : "bg-amber-50"} />
+          <SummaryCard title="Net Flow" value={netBalance} icon={<Activity size={16} />} color={netBalance >= 0 ? "text-blue-600" : "text-amber-600"} bg={netBalance >= 0 ? "bg-blue-50" : "bg-amber-50"} />
         </div>
       </div>
 
@@ -432,7 +432,7 @@ export default function TransactionsPage() {
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Registry</p>
             <span className="text-[10px] bg-slate-200/50 text-slate-600 px-2 py-0.5 rounded-full font-bold">{totalItems} records</span>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rows</span>
             <select
@@ -470,9 +470,9 @@ export default function TransactionsPage() {
                           <div className={`w-1 h-8 rounded-full ${trx.type === 'income' ? 'bg-emerald-400' : trx.type === 'transfer' ? 'bg-blue-400' : 'bg-red-400'} opacity-80`} />
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                                <p className="text-sm font-bold text-slate-900 truncate max-w-[150px]">{trx.type === 'transfer' ? 'Transfer' : trx.item?.name || trx.description}</p>
-                                {trx.project && <span className="text-[8px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 font-bold uppercase tracking-tighter flex items-center gap-1"><Target size={8}/>{trx.project.name}</span>}
-                                {trx.asset && <span className="text-[8px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded border border-amber-100 font-bold uppercase tracking-tighter flex items-center gap-1"><PieChart size={8}/>{trx.asset.symbol}</span>}
+                              <p className="text-sm font-bold text-slate-900 truncate max-w-[150px]">{trx.type === 'transfer' ? 'Transfer' : trx.item?.name || trx.description}</p>
+                              {trx.project && <span className="text-[8px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 font-bold uppercase tracking-tighter flex items-center gap-1"><Target size={8} />{trx.project.name}</span>}
+                              {trx.asset && <span className="text-[8px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded border border-amber-100 font-bold uppercase tracking-tighter flex items-center gap-1"><PieChart size={8} />{trx.asset.symbol}</span>}
                             </div>
                             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                               <p className="text-[10px] text-slate-400 font-bold">{new Date(trx.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</p>
@@ -499,7 +499,7 @@ export default function TransactionsPage() {
                         <span className="px-2.5 py-1 rounded-md text-[9px] font-bold bg-slate-50 text-slate-500 border border-slate-100 uppercase tracking-tighter">{(trx.item as any)?.categories?.name || 'General'}</span>
                       </td>
                       <td className="px-6 py-3 text-right">
-                        <span className={`text-sm font-bold ${trx.type === 'income' ? 'text-emerald-600' : trx.type === 'transfer' ? 'text-blue-600' : 'text-slate-900'}`}>
+                        <span className={`text-sm font-bold ${trx.type === 'income' ? 'text-emerald-600' : trx.type === 'transfer' ? 'text-blue-600' : 'text-red-600'}`}>
                           {trx.type === 'expense' && '- '}
                           {new Intl.NumberFormat('id-ID').format(trx.amount)}
                         </span>
@@ -526,184 +526,184 @@ export default function TransactionsPage() {
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-white w-full max-w-lg rounded-2xl shadow-xl p-5 md:p-6 max-h-[90vh] overflow-y-auto overscroll-contain no-scrollbar">
-               <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-lg font-bold text-slate-900">{editingId ? 'Edit Entry' : 'New Entry'}</h2>
-                    <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={18}/></button>
-               </div>
-               
-               <form onSubmit={handleManualSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Type</label>
-                        <div className="flex gap-2 p-1 bg-slate-50 rounded-lg">
-                        {['income', 'expense', 'transfer'].map(t => (
-                            <button key={t} type="button" onClick={() => setFormData({...formData, type: t})} className={`flex-1 py-2 text-[10px] font-bold rounded-md capitalize transition-all ${formData.type === t ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}>{t}</button>
-                        ))}
-                        </div>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-lg font-bold text-slate-900">{editingId ? 'Edit Entry' : 'New Entry'}</h2>
+                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={18} /></button>
+              </div>
+
+              <form onSubmit={handleManualSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Type</label>
+                    <div className="flex gap-2 p-1 bg-slate-50 rounded-lg">
+                      {['income', 'expense', 'transfer'].map(t => (
+                        <button key={t} type="button" onClick={() => setFormData({ ...formData, type: t })} className={`flex-1 py-2 text-[10px] font-bold rounded-md capitalize transition-all ${formData.type === t ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}>{t}</button>
+                      ))}
                     </div>
-                    <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Date</label><input type="date" className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} /></div>
                   </div>
+                  <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Date</label><input type="date" className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} /></div>
+                </div>
 
-                  <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Amount</label><input type="text" className="w-full text-base p-3 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 font-bold text-slate-900" placeholder="0" value={formatDisplayAmount(formData.amount)} onChange={handleAmountChange} /></div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">{formData.type === 'transfer' ? 'From Account' : 'Wallet'}</label><select className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.wallet_id} onChange={e => setFormData({...formData, wallet_id: e.target.value})}>
-                        <option value="">Select...</option>
-                        {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Amount</label><input type="text" className="w-full text-base p-3 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 font-bold text-slate-900" placeholder="0" value={formatDisplayAmount(formData.amount)} onChange={handleAmountChange} /></div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">{formData.type === 'transfer' ? 'From Account' : 'Wallet'}</label><select className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.wallet_id} onChange={e => setFormData({ ...formData, wallet_id: e.target.value })}>
+                    <option value="">Select...</option>
+                    {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                  </select></div>
+                  {formData.type === 'transfer' ? (
+                    <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">To Account</label><select className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.to_wallet_id} onChange={e => setFormData({ ...formData, to_wallet_id: e.target.value })}>
+                      <option value="">Select...</option>
+                      {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                     </select></div>
-                    {formData.type === 'transfer' ? (
-                        <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">To Account</label><select className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.to_wallet_id} onChange={e => setFormData({...formData, to_wallet_id: e.target.value})}>
-                            <option value="">Select...</option>
-                            {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                        </select></div>
-                    ) : (
-                        <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Category Item</label>
-                            <select className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.item_id} onChange={e => setFormData({...formData, item_id: e.target.value})}>
-                                <option value="">Select item...</option>
-                                {(() => {
-                                    const filtered = masterItems.filter(i => (i.categories as any)?.type === formData.type);
-                                    console.log('Form type:', formData.type);
-                                    console.log('All masterItems:', masterItems.length);
-                                    console.log('Filtered items:', filtered.length, filtered);
-                                    return filtered.map(i => (
-                                        <option key={i.id} value={i.id}>
-                                            {i.name} {(i.categories as any)?.name ? `(${(i.categories as any).name})` : ''}
-                                        </option>
-                                    ));
-                                })()}
-                            </select>
-                        </div>
-                    )}
-                  </div>
-
-                  <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Description</label><input type="text" placeholder="Note..." className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} /></div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block flex items-center gap-1.5">
-                      <TagIcon size={12} />
-                      Tags
-                    </label>
-                    <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {selectedTags.map(tagId => {
-                          const tag = tags.find(t => t.id === tagId);
-                          return tag ? (
-                            <TagBadge
-                              key={tag.id}
-                              tag={tag}
-                              size="md"
-                              onRemove={() => setSelectedTags(selectedTags.filter(id => id !== tagId))}
-                            />
-                          ) : null;
-                        })}
-                      </div>
-                      <select
-                        value=""
-                        onChange={(e) => {
-                          const tagId = Number(e.target.value);
-                          if (tagId && !selectedTags.includes(tagId)) {
-                            setSelectedTags([...selectedTags, tagId]);
-                          }
-                        }}
-                        className="w-full text-xs p-2 bg-white rounded-lg outline-none text-slate-900 font-bold border border-slate-200"
-                      >
-                        <option value="">+ Add tag...</option>
-                        {tags
-                          .filter(t => !selectedTags.includes(t.id))
-                          .map(t => (
-                            <option key={t.id} value={t.id}>
-                              {t.icon ? `${t.icon} ${t.name}` : t.name}
+                  ) : (
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Category Item</label>
+                      <select className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.item_id} onChange={e => setFormData({ ...formData, item_id: e.target.value })}>
+                        <option value="">Select item...</option>
+                        {(() => {
+                          const filtered = masterItems.filter(i => (i.categories as any)?.type === formData.type);
+                          console.log('Form type:', formData.type);
+                          console.log('All masterItems:', masterItems.length);
+                          console.log('Filtered items:', filtered.length, filtered);
+                          return filtered.map(i => (
+                            <option key={i.id} value={i.id}>
+                              {i.name} {(i.categories as any)?.name ? `(${(i.categories as any).name})` : ''}
                             </option>
-                          ))}
+                          ));
+                        })()}
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Description</label><input type="text" placeholder="Note..." className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} /></div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block flex items-center gap-1.5">
+                    <TagIcon size={12} />
+                    Tags
+                  </label>
+                  <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {selectedTags.map(tagId => {
+                        const tag = tags.find(t => t.id === tagId);
+                        return tag ? (
+                          <TagBadge
+                            key={tag.id}
+                            tag={tag}
+                            size="md"
+                            onRemove={() => setSelectedTags(selectedTags.filter(id => id !== tagId))}
+                          />
+                        ) : null;
+                      })}
+                    </div>
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        const tagId = Number(e.target.value);
+                        if (tagId && !selectedTags.includes(tagId)) {
+                          setSelectedTags([...selectedTags, tagId]);
+                        }
+                      }}
+                      className="w-full text-xs p-2 bg-white rounded-lg outline-none text-slate-900 font-bold border border-slate-200"
+                    >
+                      <option value="">+ Add tag...</option>
+                      {tags
+                        .filter(t => !selectedTags.includes(t.id))
+                        .map(t => (
+                          <option key={t.id} value={t.id}>
+                            {t.icon ? `${t.icon} ${t.name}` : t.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 mt-2">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-3">Optional Associations</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[9px] font-bold text-slate-500 mb-1 block uppercase">Project</label>
+                      <select className="w-full text-[10px] p-2 bg-slate-50 rounded-lg outline-none text-slate-900 font-bold" value={formData.project_id} onChange={e => setFormData({ ...formData, project_id: e.target.value })}>
+                        <option value="">None</option>
+                        {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-bold text-slate-500 mb-1 block uppercase">Asset</label>
+                      <select className="w-full text-[10px] p-2 bg-slate-50 rounded-lg outline-none text-slate-900 font-bold" value={formData.asset_id} onChange={e => setFormData({ ...formData, asset_id: e.target.value })}>
+                        <option value="">None</option>
+                        {assets.map(a => <option key={a.id} value={a.id}>{a.symbol}</option>)}
                       </select>
                     </div>
                   </div>
+                </div>
 
-                  <div className="pt-2 border-t border-slate-100 mt-2">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-3">Optional Associations</p>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="text-[9px] font-bold text-slate-500 mb-1 block uppercase">Project</label>
-                            <select className="w-full text-[10px] p-2 bg-slate-50 rounded-lg outline-none text-slate-900 font-bold" value={formData.project_id} onChange={e => setFormData({...formData, project_id: e.target.value})}>
-                                <option value="">None</option>
-                                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {!editingId && (
+                  <div className="pt-3 border-t border-slate-100 mt-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isRecurring}
+                        onChange={(e) => setIsRecurring(e.target.checked)}
+                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-xs font-bold text-slate-700">Make this a recurring transaction</span>
+                    </label>
+
+                    {isRecurring && (
+                      <div className="mt-3 space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[9px] font-bold text-slate-500 mb-1 block uppercase">Frequency</label>
+                            <select
+                              value={recurringFrequency}
+                              onChange={(e) => setRecurringFrequency(e.target.value as any)}
+                              className="w-full text-[10px] p-2 bg-white rounded-lg outline-none text-slate-900 font-bold border border-slate-200"
+                            >
+                              <option value="daily">Daily</option>
+                              <option value="weekly">Weekly</option>
+                              <option value="monthly">Monthly</option>
+                              <option value="quarterly">Quarterly</option>
+                              <option value="yearly">Yearly</option>
                             </select>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold text-slate-500 mb-1 block uppercase">Asset</label>
-                            <select className="w-full text-[10px] p-2 bg-slate-50 rounded-lg outline-none text-slate-900 font-bold" value={formData.asset_id} onChange={e => setFormData({...formData, asset_id: e.target.value})}>
-                                <option value="">None</option>
-                                {assets.map(a => <option key={a.id} value={a.id}>{a.symbol}</option>)}
-                            </select>
-                        </div>
-                    </div>
-                  </div>
-
-                  {!editingId && (
-                    <div className="pt-3 border-t border-slate-100 mt-3">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={isRecurring}
-                          onChange={(e) => setIsRecurring(e.target.checked)}
-                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-xs font-bold text-slate-700">Make this a recurring transaction</span>
-                      </label>
-
-                      {isRecurring && (
-                        <div className="mt-3 space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-[9px] font-bold text-slate-500 mb-1 block uppercase">Frequency</label>
-                              <select
-                                value={recurringFrequency}
-                                onChange={(e) => setRecurringFrequency(e.target.value as any)}
-                                className="w-full text-[10px] p-2 bg-white rounded-lg outline-none text-slate-900 font-bold border border-slate-200"
-                              >
-                                <option value="daily">Daily</option>
-                                <option value="weekly">Weekly</option>
-                                <option value="monthly">Monthly</option>
-                                <option value="quarterly">Quarterly</option>
-                                <option value="yearly">Yearly</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="text-[9px] font-bold text-slate-500 mb-1 block uppercase">Start Date</label>
-                              <input
-                                type="date"
-                                value={recurringStartDate}
-                                onChange={(e) => setRecurringStartDate(e.target.value)}
-                                className="w-full text-[10px] p-2 bg-white rounded-lg outline-none text-slate-900 font-bold border border-slate-200"
-                              />
-                            </div>
                           </div>
                           <div>
-                            <label className="text-[9px] font-bold text-slate-500 mb-1 block uppercase">End Date (Optional)</label>
+                            <label className="text-[9px] font-bold text-slate-500 mb-1 block uppercase">Start Date</label>
                             <input
                               type="date"
-                              value={recurringEndDate}
-                              onChange={(e) => setRecurringEndDate(e.target.value)}
+                              value={recurringStartDate}
+                              onChange={(e) => setRecurringStartDate(e.target.value)}
                               className="w-full text-[10px] p-2 bg-white rounded-lg outline-none text-slate-900 font-bold border border-slate-200"
-                              placeholder="Leave empty for no end date"
                             />
                           </div>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={autoGenerate}
-                              onChange={(e) => setAutoGenerate(e.target.checked)}
-                              className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="text-[10px] font-bold text-slate-600">Auto-generate transactions</span>
-                          </label>
                         </div>
-                      )}
-                    </div>
-                  )}
+                        <div>
+                          <label className="text-[9px] font-bold text-slate-500 mb-1 block uppercase">End Date (Optional)</label>
+                          <input
+                            type="date"
+                            value={recurringEndDate}
+                            onChange={(e) => setRecurringEndDate(e.target.value)}
+                            className="w-full text-[10px] p-2 bg-white rounded-lg outline-none text-slate-900 font-bold border border-slate-200"
+                            placeholder="Leave empty for no end date"
+                          />
+                        </div>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={autoGenerate}
+                            onChange={(e) => setAutoGenerate(e.target.checked)}
+                            className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-[10px] font-bold text-slate-600">Auto-generate transactions</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                  <button type="submit" className="w-full py-3.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors mt-2 shadow-lg shadow-slate-200 uppercase tracking-widest active:scale-[0.98]">Save Transaction</button>
-               </form>
+                <button type="submit" className="w-full py-3.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors mt-2 shadow-lg shadow-slate-200 uppercase tracking-widest active:scale-[0.98]">Save Transaction</button>
+              </form>
             </motion.div>
           </div>
         )}

@@ -35,7 +35,7 @@ export default function BanksPage() {
 
   useEffect(() => {
     if (selectedBankForActivity) {
-        fetchBankActivity(selectedBankForActivity.id);
+      fetchBankActivity(selectedBankForActivity.id);
     }
   }, [selectedBankForActivity, activityPage, activitySearch]);
 
@@ -94,7 +94,7 @@ export default function BanksPage() {
         .eq('wallet_id', walletId);
 
       if (activitySearch) {
-          query = query.ilike('description', `%${activitySearch}%`);
+        query = query.ilike('description', `%${activitySearch}%`);
       }
 
       const from = (activityPage - 1) * itemsPerPage;
@@ -183,7 +183,7 @@ export default function BanksPage() {
     <div className="max-w-6xl mx-auto pb-20">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">Accounts</h1>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-blue-600">Accounts</h1>
           <p className="text-slate-500 text-xs md:text-sm mt-0.5">Manage your wallets</p>
         </div>
         <button
@@ -363,17 +363,17 @@ export default function BanksPage() {
 
               <div className="px-6 py-4 border-b border-slate-50 bg-white">
                 <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                    <input 
-                        type="text" 
-                        placeholder="Search description..." 
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-100 transition-all"
-                        value={activitySearch}
-                        onChange={(e) => { setActivitySearch(e.target.value); setActivityPage(1); }}
-                    />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                  <input
+                    type="text"
+                    placeholder="Search description..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                    value={activitySearch}
+                    onChange={(e) => { setActivitySearch(e.target.value); setActivityPage(1); }}
+                  />
                 </div>
               </div>
-              
+
               <div className="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar no-scrollbar text-black">
                 {loadingActivity ? <div className="text-center py-12 text-[10px] font-bold text-slate-400 uppercase tracking-widest animate-pulse">Syncing...</div> : bankActivity.length === 0 ? <div className="text-center py-12 text-[10px] font-bold text-slate-400 uppercase tracking-widest">No history found</div> : (
                   bankActivity.map((trx) => (
@@ -387,8 +387,8 @@ export default function BanksPage() {
                           <p className="text-[10px] text-slate-400 font-bold">{new Date(trx.date).toLocaleDateString()} • {trx.item?.categories?.name || 'General'}</p>
                         </div>
                       </div>
-                      <span className={`text-sm font-bold ${trx.type === 'income' ? 'text-emerald-600' : 'text-slate-900'}`}>
-                        {trx.type === 'income' ? '+' : '-'} {new Intl.NumberFormat('id-ID').format(trx.amount)}
+                      <span className={`text-sm font-bold ${trx.type === 'income' ? 'text-emerald-600' : trx.type === 'transfer' ? 'text-blue-600' : 'text-red-600'}`}>
+                        {trx.type === 'income' ? '+' : trx.type === 'expense' ? '-' : ''} {new Intl.NumberFormat('id-ID').format(trx.amount)}
                       </span>
                     </div>
                   ))
@@ -396,17 +396,17 @@ export default function BanksPage() {
               </div>
 
               {activityTotal > itemsPerPage && (
-                  <div className="p-4 border-t border-slate-50 bg-slate-50/30">
-                      <Pagination 
-                        currentPage={activityPage} 
-                        totalPages={Math.ceil(activityTotal / itemsPerPage)} 
-                        onPageChange={setActivityPage} 
-                        totalItems={activityTotal}
-                        itemsPerPage={itemsPerPage}
-                        startIndex={(activityPage - 1) * itemsPerPage}
-                        endIndex={Math.min(activityPage * itemsPerPage, activityTotal)}
-                      />
-                  </div>
+                <div className="p-4 border-t border-slate-50 bg-slate-50/30">
+                  <Pagination
+                    currentPage={activityPage}
+                    totalPages={Math.ceil(activityTotal / itemsPerPage)}
+                    onPageChange={setActivityPage}
+                    totalItems={activityTotal}
+                    itemsPerPage={itemsPerPage}
+                    startIndex={(activityPage - 1) * itemsPerPage}
+                    endIndex={Math.min(activityPage * itemsPerPage, activityTotal)}
+                  />
+                </div>
               )}
             </motion.div>
           </div>

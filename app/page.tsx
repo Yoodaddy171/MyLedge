@@ -6,16 +6,11 @@ import {
   ShieldCheck,
   Target,
   AlertCircle,
-  Bell,
   X as CloseIcon,
-  Zap,
-  CheckCircle2,
   TrendingUp,
   TrendingDown,
   ArrowUpRight,
-  ArrowDownRight,
-  Eye,
-  History
+  ArrowDownRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
@@ -33,7 +28,7 @@ import { useGlobalData, Wallet, Goal, Transaction } from '@/contexts/GlobalDataC
 import type { DashboardStats, ChartDataPoint, Task, BankActivity } from '@/lib/types';
 
 export default function Dashboard() {
-  const { wallets, debts, recurringTransactions, budgetAlerts, refreshData } = useGlobalData();
+  const { wallets, debts, recurringTransactions, budgetAlerts, refreshData, loading: globalLoading } = useGlobalData();
 
   const [stats, setStats] = useState<DashboardStats>({
     income: 0,
@@ -65,17 +60,17 @@ export default function Dashboard() {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loadingChart, setLoadingChart] = useState(false);
 
-  // Notification & Pop-up States
+  // Pop-up States
   const [showReminders, setShowReminders] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
 
   useBodyScrollLock(showReminders);
 
+  // Fetch dashboard data when global data is ready (loading finished)
   useEffect(() => {
-    if (wallets.length > 0 || !loading) {
-        fetchDashboardData();
+    if (!globalLoading) {
+      fetchDashboardData();
     }
-  }, [wallets, debts]);
+  }, [globalLoading, wallets, debts]);
 
   // Step 4: Client-side recurring transaction check
   useEffect(() => {
@@ -275,7 +270,7 @@ export default function Dashboard() {
         processed = days.map(day => {
           const dayTrx = trxs.filter(t => t.date === day);
           const dataPoint: any = {
-            name: viewMode === 'weekly' 
+            name: viewMode === 'weekly'
               ? new Date(day).toLocaleDateString('en-US', { weekday: 'short' })
               : new Date(day).getDate().toString(),
             fullDate: day
@@ -377,7 +372,6 @@ export default function Dashboard() {
   };
 
   const health = getHealthStatus(stats.savingsRate);
-  const urgentTasks = upcomingTasks.filter(t => t.priority === 'urgent');
 
   // Filter critical budget alerts (threshold >= 100%)
   const criticalAlerts = budgetAlerts.filter(alert => alert.threshold_percent >= 100).slice(0, 3);
@@ -424,28 +418,20 @@ export default function Dashboard() {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 mb-2">
         <div className="flex items-center justify-between w-full md:w-auto">
           <div>
-            <h2 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">Intelligence</h2>
+            <h2 className="text-xl md:text-2xl font-bold tracking-tight text-blue-600">Intelligence</h2>
             <p className="text-slate-500 text-xs md:text-sm mt-0.5">Financial health overview</p>
           </div>
 
           <div className="flex items-center gap-2 md:hidden">
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${health.bg} border-opacity-50 shadow-sm`}>
-                {health.icon}
-                <p className={`text-xs font-bold ${health.color}`}>{health.label}</p>
+              {health.icon}
+              <p className={`text-xs font-bold ${health.color}`}>{health.label}</p>
             </div>
-            <button onClick={() => setShowNotifications(!showNotifications)} className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-sm relative active:scale-95 transition-all">
-              <Bell size={18} className="text-slate-600" />
-              {(stats.urgent > 0 || stats.todo > 0) && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center ring-2 ring-white">
-                  {stats.urgent || stats.todo}
-                </span>
-              )}
-            </button>
           </div>
         </div>
 
         <div className="hidden md:flex items-center gap-3">
-          {/* Manual Budget Check Button (for testing/debugging) */}
+          {/* Manual Budget Check Button */}
           <button
             onClick={handleManualBudgetCheck}
             disabled={checkingBudgets}
@@ -458,18 +444,6 @@ export default function Dashboard() {
               <Target size={18} className="text-slate-600" />
             )}
           </button>
-
-          <div className="relative">
-            <button onClick={() => setShowNotifications(!showNotifications)} className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm relative hover:border-slate-300 transition-all">
-              <Bell size={18} className="text-slate-600" />
-              {(stats.urgent > 0 || stats.todo > 0) && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white shadow-sm">
-                  {stats.urgent || stats.todo}
-                </span>
-              )}
-            </button>
-            {/* Notification Dropdown logic remains same */}
-          </div>
 
           <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border ${health.bg} border-opacity-50 shadow-sm`}>
             {health.icon}
@@ -539,9 +513,9 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              <CashFlowChart 
-                data={chartData} 
-                wallets={wallets} 
+              <CashFlowChart
+                data={chartData}
+                wallets={wallets}
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
                 selectedMonth={selectedMonth}
@@ -577,14 +551,13 @@ export default function Dashboard() {
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className={`text-sm font-bold ${r.type === 'income' ? 'text-emerald-600' : 'text-slate-900'}`}>
-                              {r.type === 'income' ? '+' : '-'} {new Intl.NumberFormat('id-ID').format(r.amount)}
+                            <p className={`text-sm font-bold ${r.type === 'income' ? 'text-emerald-600' : r.type === 'transfer' ? 'text-blue-600' : 'text-red-600'}`}>
+                              {r.type === 'income' ? '+' : r.type === 'expense' ? '-' : ''} {new Intl.NumberFormat('id-ID').format(r.amount)}
                             </p>
-                            <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold ${
-                              r.type === 'income' ? 'bg-emerald-50 text-emerald-600' :
-                              r.type === 'expense' ? 'bg-red-50 text-red-600' :
-                              'bg-blue-50 text-blue-600'
-                            }`}>
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold ${r.type === 'income' ? 'bg-emerald-50 text-emerald-600' :
+                                r.type === 'expense' ? 'bg-red-50 text-red-600' :
+                                  'bg-blue-50 text-blue-600'
+                              }`}>
                               {r.type}
                             </span>
                           </div>
@@ -613,7 +586,7 @@ export default function Dashboard() {
                 </div>
                 <button onClick={() => setSelectedBankForActivity(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><CloseIcon size={18} className="text-slate-500" /></button>
               </div>
-              
+
               <div className="flex-1 overflow-y-auto p-6 space-y-3 no-scrollbar">
                 {loadingActivity ? <div className="text-center py-12 text-xs text-slate-400">Loading history...</div> : bankActivity.length === 0 ? <div className="text-center py-12 text-xs text-slate-400">No history found</div> : (
                   bankActivity.map((trx) => (
@@ -627,8 +600,8 @@ export default function Dashboard() {
                           <p className="text-[10px] text-slate-400 font-bold">{new Date(trx.date).toLocaleDateString()} • {trx.item?.categories?.name || 'General'}</p>
                         </div>
                       </div>
-                      <span className={`text-sm font-bold ${trx.type === 'income' ? 'text-emerald-600' : 'text-slate-900'}`}>
-                        {trx.type === 'income' ? '+' : '-'} {new Intl.NumberFormat('id-ID').format(trx.amount)}
+                      <span className={`text-sm font-bold ${trx.type === 'income' ? 'text-emerald-600' : trx.type === 'transfer' ? 'text-blue-600' : 'text-red-600'}`}>
+                        {trx.type === 'income' ? '+' : trx.type === 'expense' ? '-' : ''} {new Intl.NumberFormat('id-ID').format(trx.amount)}
                       </span>
                     </div>
                   ))

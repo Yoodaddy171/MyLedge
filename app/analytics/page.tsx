@@ -87,19 +87,29 @@ export default function AnalyticsPage() {
         { subject: 'Invest', A: totalInvested / 1000 },
       ];
 
-      const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpense) / totalIncome) * 100 : 0;
-      let score = 50;
-      if (savingsRate > 30) score += 30; else if (savingsRate > 10) score += 15;
-      
       const totalLiquid = Number(cashNW?.net_worth || 0);
       const totalAssetsVal = totalLiquid + totalInvested;
       const totalDebtVal = debts?.reduce((acc, c) => acc + Number(c.remaining_amount), 0) || 0;
-      const debtRatio = totalAssetsVal > 0 ? (totalDebtVal / totalAssetsVal) * 100 : 0;
-      
-      if (debtRatio < 20) score += 20; else if (debtRatio > 50) score -= 20;
 
-      const status = score > 80 ? 'Excellent' : score > 50 ? 'Healthy' : 'Vulnerable';
-      const color = score > 80 ? 'text-emerald-600' : score > 50 ? 'text-blue-600' : 'text-red-600';
+      // Check if user has any meaningful data
+      const hasData = totalIncome > 0 || totalExpense > 0 || totalAssetsVal > 0 || totalDebtVal > 0;
+
+      let score = 0;
+      let status = 'No Data';
+      let color = 'text-slate-400';
+
+      if (hasData) {
+        score = 50; // Base score only when there's data
+
+        const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpense) / totalIncome) * 100 : 0;
+        if (savingsRate > 30) score += 30; else if (savingsRate > 10) score += 15;
+
+        const debtRatio = totalAssetsVal > 0 ? (totalDebtVal / totalAssetsVal) * 100 : 0;
+        if (debtRatio < 20) score += 20; else if (debtRatio > 50) score -= 20;
+
+        status = score > 80 ? 'Excellent' : score > 50 ? 'Healthy' : 'Vulnerable';
+        color = score > 80 ? 'text-emerald-600' : score > 50 ? 'text-blue-600' : 'text-red-600';
+      }
 
       setData({ radar: radarData, history: history || [], stats: { score, status, color } });
     } catch (err) { logger.handleApiError(err, 'Failed to load analytics', { component: 'AnalyticsPage' }); }
@@ -121,9 +131,9 @@ export default function AnalyticsPage() {
       const totalInvested = portfolio?.reduce((acc, p) => acc + Number(p.current_value), 0) || 0;
       const totalAssets = totalLiquid + totalInvested;
       const totalDebts = debts?.reduce((acc, c) => acc + Number(c.remaining_amount), 0) || 0;
-      
-      await supabase.from('net_worth_history').upsert({ 
-        user_id: user?.id, total_assets: totalAssets, total_debts: totalDebts, net_worth: totalAssets - totalDebts, recorded_at: new Date().toISOString().split('T')[0] 
+
+      await supabase.from('net_worth_history').upsert({
+        user_id: user?.id, total_assets: totalAssets, total_debts: totalDebts, net_worth: totalAssets - totalDebts, recorded_at: new Date().toISOString().split('T')[0]
       }, { onConflict: 'recorded_at' });
       toast.success("Snapshot Saved!"); fetchAnalytics();
     } catch (err: any) { toast.error(err.message); }
@@ -134,11 +144,11 @@ export default function AnalyticsPage() {
     <div className="max-w-7xl mx-auto pb-20">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">Analytics</h1>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-blue-600">Analytics</h1>
           <p className="text-slate-500 text-xs md:text-sm mt-0.5 md:mt-1">Financial health & patterns</p>
         </div>
         <button onClick={takeSnapshot} disabled={savingSnapshot} className="w-full sm:w-auto px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] md:text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 shadow-sm">
-          {savingSnapshot ? <RefreshCcw className="animate-spin" size={14} /> : <TrendingUp size={14} className="text-blue-600" />} 
+          {savingSnapshot ? <RefreshCcw className="animate-spin" size={14} /> : <TrendingUp size={14} className="text-blue-600" />}
           Update Snapshot
         </button>
       </header>
@@ -201,9 +211,9 @@ export default function AnalyticsPage() {
                       <defs><linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} /><stop offset="95%" stopColor="#3b82f6" stopOpacity={0} /></linearGradient></defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="recorded_at" hide />
-                      <Tooltip 
+                      <Tooltip
                         formatter={(value: any) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(value || 0))}
-                        contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 500 }} 
+                        contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 500 }}
                       />
                       <Area type="monotone" dataKey="net_worth" stroke="#3b82f6" fillOpacity={1} fill="url(#colorNet)" strokeWidth={3} />
                     </AreaChart>

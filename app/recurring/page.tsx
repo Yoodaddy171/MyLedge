@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import { useGlobalData } from '@/contexts/GlobalDataContext';
 import { supabase } from '@/lib/supabase';
 import { Modal } from '@/components/ui/Modal';
-import { formatCurrency } from '@/lib/utils';
-import { Plus, Edit2, Trash2, PlayCircle, PauseCircle } from 'lucide-react';
+import { formatCurrency, formatDisplayAmount } from '@/lib/utils';
+import { Plus, Edit2, Trash2, PlayCircle, PauseCircle, Repeat, Calendar, Zap } from 'lucide-react';
+import { toast } from 'sonner';
 
 type FormData = {
   type: 'income' | 'expense' | 'transfer';
@@ -113,11 +114,12 @@ export default function RecurringTransactionsPage() {
         if (error) throw error;
       }
 
+      toast.success(editingId ? 'Recurring updated' : 'Recurring created');
       await refreshData();
       handleCloseModal();
     } catch (error: any) {
       console.error('Error saving recurring transaction:', error);
-      alert(error.message);
+      toast.error(error.message);
     } finally {
       setSubmitting(false);
     }
@@ -133,10 +135,11 @@ export default function RecurringTransactionsPage() {
         .eq('id', id);
 
       if (error) throw error;
+      toast.success('Recurring transaction deleted');
       await refreshData();
     } catch (error: any) {
       console.error('Error deleting recurring transaction:', error);
-      alert(error.message);
+      toast.error(error.message);
     }
   };
 
@@ -148,10 +151,11 @@ export default function RecurringTransactionsPage() {
         .eq('id', id);
 
       if (error) throw error;
+      toast.success(currentStatus ? 'Recurring paused' : 'Recurring activated');
       await refreshData();
     } catch (error: any) {
       console.error('Error toggling status:', error);
-      alert(error.message);
+      toast.error(error.message);
     }
   };
 
@@ -169,11 +173,11 @@ export default function RecurringTransactionsPage() {
 
       if (!response.ok) throw new Error(result.error);
 
-      alert(`Generated ${result.created} transaction(s)`);
+      toast.success(`Generated ${result.created} transaction(s)`);
       await refreshData();
     } catch (error: any) {
       console.error('Error generating transaction:', error);
-      alert(error.message);
+      toast.error(error.message);
     }
   };
 
@@ -192,133 +196,190 @@ export default function RecurringTransactionsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-sm text-slate-500">Loading...</p>
+      <div className="flex items-center justify-center py-20">
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest animate-pulse">Loading...</p>
       </div>
     );
   }
 
+  // Calculate summary stats
+  const activeCount = recurringTransactions.filter(r => r.is_active).length;
+  const totalMonthlyIncome = recurringTransactions
+    .filter(r => r.is_active && r.type === 'income' && r.frequency === 'monthly')
+    .reduce((sum, r) => sum + r.amount, 0);
+  const totalMonthlyExpense = recurringTransactions
+    .filter(r => r.is_active && r.type === 'expense' && r.frequency === 'monthly')
+    .reduce((sum, r) => sum + r.amount, 0);
+
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Recurring Transactions</h1>
-            <p className="text-sm text-slate-500 mt-1">Manage your recurring income and expenses</p>
+    <div className="max-w-7xl mx-auto pb-12">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-blue-600">Recurring</h1>
+          <p className="text-slate-500 text-xs md:text-sm mt-0.5">Manage your recurring income and expenses</p>
+        </div>
+        <button
+          onClick={() => handleOpenModal()}
+          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 shadow-lg transition-all active:scale-95"
+        >
+          <Plus size={16} />
+          New Recurring
+        </button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-6">
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-50 rounded-lg">
+              <Repeat size={16} className="text-blue-600" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active</p>
+              <p className="text-lg font-bold text-slate-900">{activeCount}</p>
+            </div>
           </div>
-          <button
-            onClick={() => handleOpenModal()}
-            className="flex items-center gap-2 bg-slate-900 text-white px-4 py-3 rounded-xl hover:bg-slate-800 transition-all text-sm font-semibold"
-          >
-            <Plus size={16} />
-            New Recurring
-          </button>
+        </div>
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-50 rounded-lg">
+              <Zap size={16} className="text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Monthly Income</p>
+              <p className="text-lg font-bold text-emerald-600">{formatCurrency(totalMonthlyIncome)}</p>
+            </div>
+          </div>
+        </div>
+        <div className="col-span-2 md:col-span-1 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-red-50 rounded-lg">
+              <Calendar size={16} className="text-red-600" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Monthly Expense</p>
+              <p className="text-lg font-bold text-red-600">{formatCurrency(totalMonthlyExpense)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recurring Transactions List */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="bg-slate-50/50 p-4 border-b border-slate-100 flex justify-between items-center px-4 md:px-6">
+          <div className="flex items-center gap-2">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Templates</p>
+            <span className="text-[10px] bg-slate-200/50 text-slate-600 px-2 py-0.5 rounded-full font-bold">{recurringTransactions.length} items</span>
+          </div>
         </div>
 
-        {/* Recurring Transactions List */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          {recurringTransactions.length === 0 ? (
-            <div className="p-12 text-center">
-              <p className="text-sm text-slate-500">No recurring transactions yet</p>
-              <button
-                onClick={() => handleOpenModal()}
-                className="mt-4 text-sm font-semibold text-slate-900 hover:text-slate-700"
-              >
-                Create your first one
-              </button>
+        {recurringTransactions.length === 0 ? (
+          <div className="p-12 text-center">
+            <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Repeat size={28} className="text-slate-400" />
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-100">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600">Description</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600">Type</th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600">Amount</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600">Frequency</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600">Next Date</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600">Status</th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {recurringTransactions.map((recurring) => (
-                    <tr key={recurring.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <p className="text-sm font-semibold text-slate-900">{recurring.description}</p>
-                        {recurring.notes && (
-                          <p className="text-xs text-slate-500 mt-1">{recurring.notes}</p>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(recurring.type)}`}>
-                          {recurring.type.charAt(0).toUpperCase() + recurring.type.slice(1)}
+            <p className="text-sm font-semibold text-slate-600 mb-1">No recurring transactions yet</p>
+            <p className="text-xs text-slate-400 mb-4">Create templates to automate your regular transactions</p>
+            <button
+              onClick={() => handleOpenModal()}
+              className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors"
+            >
+              Create your first one →
+            </button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50/50 border-b border-slate-100">
+                <tr>
+                  <th className="px-4 md:px-6 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Description</th>
+                  <th className="px-4 md:px-6 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Type</th>
+                  <th className="px-4 md:px-6 py-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Amount</th>
+                  <th className="px-4 md:px-6 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest hidden md:table-cell">Frequency</th>
+                  <th className="px-4 md:px-6 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest hidden lg:table-cell">Next Date</th>
+                  <th className="px-4 md:px-6 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Status</th>
+                  <th className="px-4 md:px-6 py-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {recurringTransactions.map((recurring) => (
+                  <tr key={recurring.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-4 md:px-6 py-4">
+                      <p className="text-xs font-bold text-slate-900">{recurring.description}</p>
+                      {recurring.notes && (
+                        <p className="text-[10px] text-slate-400 mt-1 truncate max-w-[150px]">{recurring.notes}</p>
+                      )}
+                    </td>
+                    <td className="px-4 md:px-6 py-4">
+                      <span className={`inline-block px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${getTypeColor(recurring.type)}`}>
+                        {recurring.type}
+                      </span>
+                    </td>
+                    <td className="px-4 md:px-6 py-4 text-right">
+                      <p className={`text-xs font-bold ${recurring.type === 'income' ? 'text-emerald-600' : recurring.type === 'expense' ? 'text-red-600' : 'text-blue-600'}`}>
+                        {recurring.type === 'income' ? '+' : recurring.type === 'expense' ? '-' : ''}{formatCurrency(recurring.amount)}
+                      </p>
+                    </td>
+                    <td className="px-4 md:px-6 py-4 hidden md:table-cell">
+                      <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">
+                        {getFrequencyLabel(recurring.frequency)}
+                      </span>
+                    </td>
+                    <td className="px-4 md:px-6 py-4 hidden lg:table-cell">
+                      <p className="text-xs text-slate-600">{new Date(recurring.next_occurrence).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                      {recurring.last_generated_date && (
+                        <p className="text-[10px] text-slate-400 mt-0.5">Last: {new Date(recurring.last_generated_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</p>
+                      )}
+                    </td>
+                    <td className="px-4 md:px-6 py-4">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`inline-block w-1.5 h-1.5 rounded-full ${recurring.is_active ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                        <span className={`text-[10px] font-bold ${recurring.is_active ? 'text-emerald-600' : 'text-slate-400'}`}>
+                          {recurring.is_active ? 'Active' : 'Paused'}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <p className="text-sm font-bold text-slate-900">
-                          {formatCurrency(recurring.amount)}
-                        </p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-sm text-slate-600">{getFrequencyLabel(recurring.frequency)}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-sm text-slate-600">{recurring.next_occurrence}</p>
-                        {recurring.last_generated_date && (
-                          <p className="text-xs text-slate-400 mt-1">Last: {recurring.last_generated_date}</p>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <span className={`inline-block w-2 h-2 rounded-full ${recurring.is_active ? 'bg-green-500' : 'bg-slate-300'}`} />
-                          <span className="text-xs text-slate-600">
-                            {recurring.is_active ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleToggleActive(recurring.id, recurring.is_active)}
-                            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                            title={recurring.is_active ? 'Pause' : 'Activate'}
-                          >
-                            {recurring.is_active ? (
-                              <PauseCircle size={16} className="text-slate-600" />
-                            ) : (
-                              <PlayCircle size={16} className="text-slate-600" />
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleGenerateNow(recurring.id)}
-                            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-xs font-semibold text-blue-600"
-                            title="Generate Now"
-                          >
-                            Generate
-                          </button>
-                          <button
-                            onClick={() => handleOpenModal(recurring)}
-                            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                          >
-                            <Edit2 size={16} className="text-slate-600" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(recurring.id)}
-                            className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 size={16} className="text-red-600" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 md:px-6 py-4">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleToggleActive(recurring.id, recurring.is_active)}
+                          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                          title={recurring.is_active ? 'Pause' : 'Activate'}
+                        >
+                          {recurring.is_active ? (
+                            <PauseCircle size={14} className="text-slate-500" />
+                          ) : (
+                            <PlayCircle size={14} className="text-emerald-600" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleGenerateNow(recurring.id)}
+                          className="px-2 py-1.5 hover:bg-blue-50 rounded-lg transition-colors text-[10px] font-bold text-blue-600"
+                          title="Generate Now"
+                        >
+                          Generate
+                        </button>
+                        <button
+                          onClick={() => handleOpenModal(recurring)}
+                          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                        >
+                          <Edit2 size={14} className="text-slate-500" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(recurring.id)}
+                          className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={14} className="text-red-500" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Create/Edit Modal */}
@@ -367,10 +428,13 @@ export default function RecurringTransactionsPage() {
               Amount <span className="text-red-500">*</span>
             </label>
             <input
-              type="number"
-              step="0.01"
-              value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              type="text"
+              inputMode="numeric"
+              value={formData.amount ? formatDisplayAmount(formData.amount) : ''}
+              onChange={(e) => {
+                const rawValue = e.target.value.replace(/\D/g, '');
+                setFormData({ ...formData, amount: rawValue });
+              }}
               className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               required
               placeholder="0"

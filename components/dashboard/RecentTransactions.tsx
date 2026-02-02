@@ -24,16 +24,16 @@ export default function RecentTransactions({ transactions }: RecentTransactionsP
         {transactions.map((trx) => (
           <div key={trx.id} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-all group border border-transparent hover:border-slate-100">
             <div className="flex items-center gap-3 overflow-hidden">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${trx.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-500'}`}>
-                {trx.type === 'income' ? 'IN' : 'OUT'}
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${trx.type === 'income' ? 'bg-emerald-50 text-emerald-600' : trx.type === 'transfer' ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-600'}`}>
+                {trx.type === 'income' ? 'IN' : trx.type === 'transfer' ? 'TRF' : 'OUT'}
               </div>
               <div className="min-w-0">
                 <p className="font-medium text-slate-900 text-sm truncate">{trx.item?.name || trx.description || 'Manual Entry'}</p>
                 <p className="text-xs text-slate-500 mt-0.5">{new Date(trx.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</p>
               </div>
             </div>
-            <p className={`font-semibold text-sm whitespace-nowrap ${trx.type === 'income' ? 'text-emerald-600' : 'text-slate-900'}`}>
-              {trx.type === 'income' ? '+' : '-'} {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(trx.amount)}
+            <p className={`font-semibold text-sm whitespace-nowrap ${trx.type === 'income' ? 'text-emerald-600' : trx.type === 'transfer' ? 'text-blue-600' : 'text-red-600'}`}>
+              {trx.type === 'income' ? '+' : trx.type === 'expense' ? '-' : ''} {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(trx.amount)}
             </p>
           </div>
         ))}

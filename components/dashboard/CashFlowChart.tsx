@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
-import { Loader2 } from 'lucide-react';
+import { Loader2, BarChart3 } from 'lucide-react';
 
 interface CashFlowChartProps {
   data: any[];
@@ -107,48 +107,62 @@ export default function CashFlowChart({
       </div>
 
       <div className="h-[280px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ left: -30, top: 10 }}>
-            <defs>
-              {wallets.map((w, i) => (
-                <linearGradient key={w.id} id={`color${w.id}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={chartColors[i % chartColors.length]} stopOpacity={0.1} />
-                  <stop offset="95%" stopColor={chartColors[i % chartColors.length]} stopOpacity={0} />
-                </linearGradient>
-              ))}
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-            <XAxis 
-              dataKey="name" 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }} 
-              dy={10} 
-            />
-            <YAxis hide />
-            <Tooltip
-              formatter={(value: any) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(Number(value || 0))}
-              contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 500 }}
-            />
-            <Legend
-              onClick={(e) => e && e.value && toggleBank(e.value)}
-              wrapperStyle={{ paddingTop: '20px', fontSize: '11px', color: '#64748b' }}
-              iconType="circle"
-            />
-            {wallets.map((w, i) => (
-              <Area
-                key={w.id}
-                type="monotone"
-                dataKey={w.name}
-                stroke={chartColors[i % chartColors.length]}
-                fillOpacity={1}
-                fill={`url(#color${w.id})`}
-                strokeWidth={2}
-                hide={hiddenBanks.includes(w.name)}
+        {(!data || data.length === 0 || !wallets || wallets.length === 0) ? (
+          <div className="h-full flex flex-col items-center justify-center text-center">
+            <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
+              <BarChart3 size={28} className="text-slate-400" />
+            </div>
+            <p className="text-sm font-semibold text-slate-600 mb-1">No data available</p>
+            <p className="text-xs text-slate-400 max-w-[200px]">
+              {wallets.length === 0
+                ? "Add a bank account to start tracking your cash flow"
+                : "No transactions found for this period"}
+            </p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data} margin={{ left: -30, top: 10 }}>
+              <defs>
+                {wallets.map((w, i) => (
+                  <linearGradient key={w.id} id={`color${w.id}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={chartColors[i % chartColors.length]} stopOpacity={0.1} />
+                    <stop offset="95%" stopColor={chartColors[i % chartColors.length]} stopOpacity={0} />
+                  </linearGradient>
+                ))}
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis
+                dataKey="name"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }}
+                dy={10}
               />
-            ))}
-          </AreaChart>
-        </ResponsiveContainer>
+              <YAxis hide />
+              <Tooltip
+                formatter={(value: any) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(Number(value || 0))}
+                contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 500 }}
+              />
+              <Legend
+                onClick={(e) => e && e.value && toggleBank(e.value)}
+                wrapperStyle={{ paddingTop: '20px', fontSize: '11px', color: '#64748b' }}
+                iconType="circle"
+              />
+              {wallets.map((w, i) => (
+                <Area
+                  key={w.id}
+                  type="monotone"
+                  dataKey={w.name}
+                  stroke={chartColors[i % chartColors.length]}
+                  fillOpacity={1}
+                  fill={`url(#color${w.id})`}
+                  strokeWidth={2}
+                  hide={hiddenBanks.includes(w.name)}
+                />
+              ))}
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

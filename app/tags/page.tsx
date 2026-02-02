@@ -87,7 +87,7 @@ export default function TagsPage() {
     <div className="max-w-4xl mx-auto pb-20">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">Transaction Tags</h1>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-blue-600">Transaction Tags</h1>
           <p className="text-slate-500 text-xs md:text-sm mt-0.5">Organize transactions with custom labels</p>
         </div>
         <button
@@ -204,11 +204,10 @@ export default function TagsPage() {
                         key={color}
                         type="button"
                         onClick={() => setFormData({ ...formData, color })}
-                        className={`w-full aspect-square rounded-lg transition-all ${
-                          formData.color === color
+                        className={`w-full aspect-square rounded-lg transition-all ${formData.color === color
                             ? 'ring-2 ring-offset-2 ring-slate-400 scale-110'
                             : 'hover:scale-105'
-                        }`}
+                          }`}
                         style={{ backgroundColor: color }}
                       />
                     ))}
@@ -225,11 +224,10 @@ export default function TagsPage() {
                         key={icon}
                         type="button"
                         onClick={() => setFormData({ ...formData, icon })}
-                        className={`p-2 text-lg rounded-lg border transition-all ${
-                          formData.icon === icon
+                        className={`p-2 text-lg rounded-lg border transition-all ${formData.icon === icon
                             ? 'border-slate-400 bg-slate-100 scale-110'
                             : 'border-slate-200 hover:border-slate-300 hover:scale-105'
-                        }`}
+                          }`}
                       >
                         {icon}
                       </button>

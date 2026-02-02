@@ -37,8 +37,8 @@ export default function DebtsPage() {
 
   useBodyScrollLock(isModalOpen || isPayModalOpen);
 
-  useEffect(() => { 
-    fetchDebts(); 
+  useEffect(() => {
+    fetchDebts();
     fetchWallets();
   }, []);
 
@@ -93,17 +93,17 @@ export default function DebtsPage() {
     };
     if (editingId) await supabase.from('debts').update(payload).eq('id', editingId);
     else await supabase.from('debts').insert(payload);
-    setIsModalOpen(false); setEditingId(null); 
-    setFormData({ 
-      name: '', 
+    setIsModalOpen(false); setEditingId(null);
+    setFormData({
+      name: '',
       creditor: '',
-      total_amount: '', 
-      remaining_amount: '', 
+      total_amount: '',
+      remaining_amount: '',
       monthly_payment: '',
       interest_rate: '',
-      due_date: '', 
-      notes: '' 
-    }); 
+      due_date: '',
+      notes: ''
+    });
     fetchDebts();
     toast.success(editingId ? "Debt updated" : "New debt added");
   };
@@ -144,15 +144,15 @@ export default function DebtsPage() {
 
   const openEditModal = (debt: any) => {
     setEditingId(debt.id);
-    setFormData({ 
-      name: debt.name, 
+    setFormData({
+      name: debt.name,
       creditor: debt.creditor || '',
-      total_amount: debt.total_amount.toString(), 
-      remaining_amount: debt.remaining_amount.toString(), 
+      total_amount: debt.total_amount.toString(),
+      remaining_amount: debt.remaining_amount.toString(),
       monthly_payment: (debt.monthly_payment || '').toString(),
       interest_rate: (debt.interest_rate || '').toString(),
-      due_date: debt.due_date || '', 
-      notes: debt.notes || '' 
+      due_date: debt.due_date || '',
+      notes: debt.notes || ''
     });
     setIsModalOpen(true);
   };
@@ -184,13 +184,13 @@ export default function DebtsPage() {
     <div className="max-w-6xl mx-auto pb-20">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">Debts & Liabilities</h1>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-blue-600">Debts & Liabilities</h1>
           <p className="text-slate-500 text-xs md:text-sm mt-0.5">Track what you owe</p>
         </div>
-        <button onClick={() => { 
-          setEditingId(null); 
-          setFormData({ name: '', creditor: '', total_amount: '', remaining_amount: '', monthly_payment: '', interest_rate: '', due_date: '', notes: '' }); 
-          setIsModalOpen(true); 
+        <button onClick={() => {
+          setEditingId(null);
+          setFormData({ name: '', creditor: '', total_amount: '', remaining_amount: '', monthly_payment: '', interest_rate: '', due_date: '', notes: '' });
+          setIsModalOpen(true);
         }} className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 text-white rounded-xl text-[10px] md:text-xs font-bold hover:bg-slate-800 shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 uppercase tracking-widest">
           <Plus size={16} /> Add Debt
         </button>
@@ -243,7 +243,7 @@ export default function DebtsPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-end gap-2 border-t sm:border-t-0 sm:border-l border-slate-100 pt-3 sm:pt-0 sm:pl-4">
                   {debt.remaining_amount > 0 && (
                     <button onClick={() => openPayModal(debt)} className="flex-1 sm:flex-none px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold text-[10px] uppercase tracking-widest rounded-xl transition-all border border-emerald-100 shadow-sm active:scale-95">
@@ -273,26 +273,26 @@ export default function DebtsPage() {
               </div>
               <form onSubmit={handlePaySubmit} className="space-y-4">
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1 block">Selected Loan</label>
-                    <p className="font-bold text-sm text-slate-900">{selectedDebtForPay?.name}</p>
-                    <p className="text-[10px] text-red-500 font-bold mt-0.5">Left: {new Intl.NumberFormat('id-ID').format(selectedDebtForPay?.remaining_amount ?? 0)}</p>
+                  <label className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1 block">Selected Loan</label>
+                  <p className="font-bold text-sm text-slate-900">{selectedDebtForPay?.name}</p>
+                  <p className="text-[10px] text-red-500 font-bold mt-0.5">Left: {new Intl.NumberFormat('id-ID').format(selectedDebtForPay?.remaining_amount ?? 0)}</p>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Amount</label>
                   <input type="text" placeholder="0" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-base font-bold shadow-sm outline-none focus:ring-2 focus:ring-emerald-100 text-slate-900" value={formatDisplayAmount(payForm.amount)} onChange={(e) => setPayForm({ ...payForm, amount: e.target.value.replace(/\D/g, "") })} />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Pay From</label>
-                        <select required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold text-slate-900 outline-none" value={payForm.wallet_id} onChange={(e) => setPayForm({ ...payForm, wallet_id: e.target.value })}>
-                            <option value="">Select...</option>
-                            {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Date</label>
-                        <input type="date" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold text-slate-900 outline-none" value={payForm.date} onChange={(e) => setPayForm({ ...payForm, date: e.target.value })} />
-                    </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Pay From</label>
+                    <select required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold text-slate-900 outline-none" value={payForm.wallet_id} onChange={(e) => setPayForm({ ...payForm, wallet_id: e.target.value })}>
+                      <option value="">Select...</option>
+                      {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Date</label>
+                    <input type="date" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold text-slate-900 outline-none" value={payForm.date} onChange={(e) => setPayForm({ ...payForm, date: e.target.value })} />
+                  </div>
                 </div>
                 <button type="submit" className="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-emerald-700 transition-all mt-2 text-xs uppercase tracking-widest active:scale-[0.98]">Confirm Payment</button>
               </form>

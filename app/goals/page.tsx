@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import { useGlobalData } from '@/contexts/GlobalDataContext';
+import { formatDisplayAmount } from '@/lib/utils';
 
 type GoalStatus = 'active' | 'completed' | 'cancelled';
 
@@ -169,7 +170,7 @@ export default function GoalsPage() {
     <div className="max-w-6xl mx-auto pb-20">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">Financial Goals</h1>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-blue-600">Financial Goals</h1>
           <p className="text-slate-500 text-xs md:text-sm mt-0.5">Track your savings and investment targets</p>
         </div>
         <button
@@ -202,16 +203,14 @@ export default function GoalsPage() {
           val={completedGoals.length}
           icon={<CheckCircle size={16} className="text-emerald-500" />}
         />
-        <div className="hidden md:flex">
-          <StatCard
-            label="Total Progress"
-            val={`${Math.round(
-              activeGoals.reduce((acc, g) => acc + calculateProgress(g.current_amount, g.target_amount), 0) /
-                (activeGoals.length || 1)
-            )}%`}
-            icon={<TrendingUp size={16} className="text-violet-500" />}
-          />
-        </div>
+        <StatCard
+          label="Total Progress"
+          val={`${Math.round(
+            activeGoals.reduce((acc, g) => acc + calculateProgress(g.current_amount, g.target_amount), 0) /
+            (activeGoals.length || 1)
+          )}%`}
+          icon={<TrendingUp size={16} className="text-violet-500" />}
+        />
       </div>
 
       {loading ? (
@@ -283,9 +282,8 @@ export default function GoalsPage() {
                     </div>
                     <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          isCompleted ? 'bg-emerald-500' : 'bg-blue-500'
-                        }`}
+                        className={`h-full rounded-full transition-all duration-500 ${isCompleted ? 'bg-emerald-500' : 'bg-blue-500'
+                          }`}
                         style={{ width: `${progress}%` }}
                       />
                     </div>
@@ -369,14 +367,16 @@ export default function GoalsPage() {
                     Target Amount
                   </label>
                   <input
-                    type="number"
-                    placeholder="100000000"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="100.000.000"
                     required
-                    min="0"
-                    step="1"
                     className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold"
-                    value={formData.target_amount}
-                    onChange={(e) => setFormData({ ...formData, target_amount: e.target.value })}
+                    value={formatDisplayAmount(formData.target_amount)}
+                    onChange={(e) => {
+                      const rawValue = e.target.value.replace(/\D/g, '');
+                      setFormData({ ...formData, target_amount: rawValue });
+                    }}
                   />
                 </div>
 
@@ -385,13 +385,15 @@ export default function GoalsPage() {
                     Current Amount
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     placeholder="0"
-                    min="0"
-                    step="1"
                     className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold"
-                    value={formData.current_amount}
-                    onChange={(e) => setFormData({ ...formData, current_amount: e.target.value })}
+                    value={formatDisplayAmount(formData.current_amount)}
+                    onChange={(e) => {
+                      const rawValue = e.target.value.replace(/\D/g, '');
+                      setFormData({ ...formData, current_amount: rawValue });
+                    }}
                   />
                 </div>
 

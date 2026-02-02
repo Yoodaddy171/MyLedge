@@ -88,7 +88,7 @@ export default function NotificationCenter() {
           <>
             {/* Backdrop */}
             <div
-              className="fixed inset-0 z-40"
+              className="fixed inset-0 z-[99]"
               onClick={() => setIsOpen(false)}
             />
 
@@ -98,7 +98,7 @@ export default function NotificationCenter() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute right-0 mt-2 w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden"
+              className="absolute left-0 mt-2 w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-[100] overflow-hidden"
             >
               {/* Header */}
               <div className="p-4 border-b border-slate-100 bg-slate-50">

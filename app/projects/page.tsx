@@ -30,20 +30,20 @@ export default function ProjectsPage() {
   const [projectTransactions, setProjectTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [wallets, setWallets] = useState<WalletOption[]>([]);
-  
+
   // Modals
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isTrxModalOpen, setIsTrxModalOpen] = useState(false);
-  
+
   // Forms
   const [projectForm, setProjectForm] = useState({
-    name: '', 
+    name: '',
     description: '',
-    budget: '', 
-    status: 'planning', 
-    deadline: '' 
+    budget: '',
+    status: 'planning',
+    deadline: ''
   });
-  
+
   const [trxForm, setTrxForm] = useState({
     description: '',
     amount: '',
@@ -196,7 +196,7 @@ export default function ProjectsPage() {
   const handleDeleteProject = async () => {
     if (!selectedProject) return;
     if (!confirm(`Delete project "${selectedProject.name}"? Linked transactions will be unlinked.`)) return;
-    
+
     const { error } = await supabase.from('projects').delete().eq('id', selectedProject.id);
     if (!error) {
       toast.success("Project deleted");
@@ -224,7 +224,7 @@ export default function ProjectsPage() {
     <div className="max-w-6xl mx-auto pb-20">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">Projects</h1>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-blue-600">Projects</h1>
           <p className="text-slate-500 text-xs md:text-sm mt-0.5">Budget tracking & analytics</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto overflow-x-auto no-scrollbar pb-1 sm:pb-0">
@@ -277,7 +277,7 @@ export default function ProjectsPage() {
             <MetricCard title="Budget" value={selectedProject.total_budget} icon={<Building2 size={16} />} sub="Total Allocation" dark />
             <MetricCard title="Spent" value={selectedProject.actual_spent} icon={<Activity size={16} />} sub="Realized" progress={selectedProject.budget_percentage_used} />
             <div className="col-span-2 md:col-span-1">
-                <MetricCard title="Balance" value={selectedProject.remaining_budget} icon={<BarChart3 size={16} />} sub="Available Funds" color={selectedProject.remaining_budget >= 0 ? 'text-blue-600' : 'text-red-600'} />
+              <MetricCard title="Balance" value={selectedProject.remaining_budget} icon={<BarChart3 size={16} />} sub="Available Funds" color={selectedProject.remaining_budget >= 0 ? 'text-blue-600' : 'text-red-600'} />
             </div>
           </div>
 
@@ -309,17 +309,17 @@ export default function ProjectsPage() {
                   {projectTransactions.map((trx) => (
                     <tr key={trx.id} className="group hover:bg-slate-50/50 transition-all">
                       <td className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                         {new Date(trx.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                        {new Date(trx.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                       </td>
                       <td className="px-6 py-4">
                         <p className="font-bold text-slate-900 text-sm">{trx.description}</p>
                         {trx.notes && <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[150px] font-medium">{trx.notes}</p>}
                       </td>
                       <td className="px-6 py-4">
-                         <div className="flex items-center gap-2">
-                            <WalletIcon size={12} className="text-slate-300" />
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{trx.wallet?.name || 'Unknown'}</span>
-                         </div>
+                        <div className="flex items-center gap-2">
+                          <WalletIcon size={12} className="text-slate-300" />
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{trx.wallet?.name || 'Unknown'}</span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <span className="font-bold text-red-500 text-sm">
@@ -364,7 +364,7 @@ export default function ProjectsPage() {
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Status</label>
-                    <select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold focus:ring-2 focus:ring-blue-100 outline-none text-slate-900" value={projectForm.status} onChange={(e) => setProjectForm({ ...projectForm, status: e.target.value }) }>
+                    <select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold focus:ring-2 focus:ring-blue-100 outline-none text-slate-900" value={projectForm.status} onChange={(e) => setProjectForm({ ...projectForm, status: e.target.value })}>
                       <option value="planning">Planning</option><option value="in_progress">In Progress</option><option value="completed">Completed</option>
                     </select>
                   </div>
@@ -396,8 +396,8 @@ export default function ProjectsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Date</label>
-                     <input type="date" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-bold focus:ring-2 focus:ring-blue-100 outline-none text-slate-900" value={trxForm.date} onChange={(e) => setTrxForm({ ...trxForm, date: e.target.value })} />
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Date</label>
+                    <input type="date" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-bold focus:ring-2 focus:ring-blue-100 outline-none text-slate-900" value={trxForm.date} onChange={(e) => setTrxForm({ ...trxForm, date: e.target.value })} />
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Amount</label>
@@ -406,7 +406,7 @@ export default function ProjectsPage() {
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Pay With</label>
-                  <select required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold focus:ring-2 focus:ring-blue-100 outline-none text-slate-900" value={trxForm.wallet_id} onChange={(e) => setTrxForm({ ...trxForm, wallet_id: e.target.value }) }>
+                  <select required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold focus:ring-2 focus:ring-blue-100 outline-none text-slate-900" value={trxForm.wallet_id} onChange={(e) => setTrxForm({ ...trxForm, wallet_id: e.target.value })}>
                     <option value="">Select Wallet...</option>
                     {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                   </select>
