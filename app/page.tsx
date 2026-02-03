@@ -15,6 +15,9 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import { checkBudgetsAndCreateAlerts } from '@/lib/budget-alert-processor';
+import { useDashboardStats, useChartData, useRecentTransactions } from '@/hooks/useQueries';
+import { useIdlePrefetch } from '@/hooks/usePrefetch';
+import { SkeletonDashboardFull } from '@/components/ui/Skeleton';
 
 // Dashboard Components
 import MetricCard from '@/components/dashboard/MetricCard';
@@ -28,7 +31,16 @@ import { useGlobalData, Wallet, Goal, Transaction } from '@/contexts/GlobalDataC
 import type { DashboardStats, ChartDataPoint, Task, BankActivity } from '@/lib/types';
 
 export default function Dashboard() {
-  const { wallets, debts, recurringTransactions, budgetAlerts, refreshData, loading: globalLoading } = useGlobalData();
+  const { wallets, debts, goals: globalGoals, recurringTransactions, budgetAlerts, refreshData, loading: globalLoading } = useGlobalData();
+
+  // Use React Query for dashboard stats - data cached & background refresh
+  const { data: dashboardData, isLoading: statsLoading } = useDashboardStats();
+
+  // Prefetch other pages data when browser is idle
+  const { prefetchOnIdle } = useIdlePrefetch();
+  useEffect(() => {
+    prefetchOnIdle();
+  }, [prefetchOnIdle]);
 
   const [stats, setStats] = useState<DashboardStats>({
     income: 0,
@@ -376,6 +388,25 @@ export default function Dashboard() {
   // Filter critical budget alerts (threshold >= 100%)
   const criticalAlerts = budgetAlerts.filter(alert => alert.threshold_percent >= 100).slice(0, 3);
 
+  // Filter debts due within 7 days
+  const upcomingDebts = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sevenDaysLater = new Date(today);
+    sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+
+    return debts
+      .filter(debt => {
+        if (debt.remaining_amount <= 0) return false;
+        if (!debt.due_date) return false;
+        const dueDate = new Date(debt.due_date);
+        dueDate.setHours(0, 0, 0, 0);
+        return dueDate >= today && dueDate <= sevenDaysLater;
+      })
+      .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime())
+      .slice(0, 3);
+  }, [debts]);
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-20 relative">
       {/* Aggressive Reminder Pop-up */}
@@ -500,8 +531,68 @@ export default function Dashboard() {
         </div>
       )}
 
-      {loading ? (
-        <div className="py-20 text-center animate-pulse font-medium text-slate-400 text-sm">Loading Dashboard...</div>
+      {/* Upcoming Debt Due Dates Alert */}
+      {upcomingDebts.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-200 rounded-2xl p-4 md:p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-amber-100 rounded-xl shrink-0">
+              <AlertCircle className="text-amber-600" size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm md:text-base font-bold text-amber-900">Tagihan Segera Jatuh Tempo</h3>
+                <a
+                  href="/debts"
+                  className="text-xs font-semibold text-amber-600 hover:text-amber-700 transition-colors"
+                >
+                  Lihat Semua
+                </a>
+              </div>
+              <p className="text-xs text-amber-700 mb-3">
+                {upcomingDebts.length} hutang akan jatuh tempo dalam 7 hari ke depan
+              </p>
+              <div className="space-y-2">
+                {upcomingDebts.map(debt => {
+                  const dueDate = new Date(debt.due_date!);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  dueDate.setHours(0, 0, 0, 0);
+                  const daysLeft = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                  const isUrgent = daysLeft <= 2;
+
+                  return (
+                    <div
+                      key={debt.id}
+                      className="flex items-center justify-between p-3 bg-white rounded-xl border border-amber-100 shadow-sm"
+                    >
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${isUrgent ? 'bg-red-500 animate-pulse' : 'bg-amber-500'}`} />
+                        <div className="min-w-0">
+                          <p className="text-xs md:text-sm font-semibold text-slate-900 truncate">
+                            {debt.name}
+                          </p>
+                          <p className="text-[10px] text-slate-500">
+                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(debt.remaining_amount)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="ml-3 shrink-0 text-right">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold ${isUrgent ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                          }`}>
+                          {daysLeft === 0 ? 'Hari Ini!' : daysLeft === 1 ? 'Besok' : `${daysLeft} hari lagi`}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {loading || statsLoading ? (
+        <SkeletonDashboardFull />
       ) : (
         <div className="space-y-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">

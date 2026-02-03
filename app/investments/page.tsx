@@ -16,6 +16,57 @@ import type { AssetTransaction, WalletOption } from '@/lib/types';
 
 const COLORS = ['#F59E0B', '#3B82F6', '#10B981', '#8B5CF6'];
 
+// Popular Indonesian stocks (IDX)
+const IDX_STOCKS = [
+  { symbol: 'BBCA', name: 'Bank Central Asia' },
+  { symbol: 'BBRI', name: 'Bank Rakyat Indonesia' },
+  { symbol: 'BMRI', name: 'Bank Mandiri' },
+  { symbol: 'BBNI', name: 'Bank Negara Indonesia' },
+  { symbol: 'TLKM', name: 'Telkom Indonesia' },
+  { symbol: 'ASII', name: 'Astra International' },
+  { symbol: 'UNVR', name: 'Unilever Indonesia' },
+  { symbol: 'ICBP', name: 'Indofood CBP' },
+  { symbol: 'INDF', name: 'Indofood Sukses Makmur' },
+  { symbol: 'HMSP', name: 'HM Sampoerna' },
+  { symbol: 'GGRM', name: 'Gudang Garam' },
+  { symbol: 'KLBF', name: 'Kalbe Farma' },
+  { symbol: 'ANTM', name: 'Aneka Tambang' },
+  { symbol: 'PTBA', name: 'Bukit Asam' },
+  { symbol: 'ADRO', name: 'Adaro Energy' },
+  { symbol: 'ITMG', name: 'Indo Tambangraya Megah' },
+  { symbol: 'CPIN', name: 'Charoen Pokphand Indonesia' },
+  { symbol: 'JPFA', name: 'Japfa Comfeed Indonesia' },
+  { symbol: 'SMGR', name: 'Semen Indonesia' },
+  { symbol: 'INCO', name: 'Vale Indonesia' },
+  { symbol: 'PGAS', name: 'Perusahaan Gas Negara' },
+  { symbol: 'JSMR', name: 'Jasa Marga' },
+  { symbol: 'EXCL', name: 'XL Axiata' },
+  { symbol: 'ISAT', name: 'Indosat Ooredoo' },
+  { symbol: 'TOWR', name: 'Sarana Menara Nusantara' },
+  { symbol: 'MIKA', name: 'Mitra Keluarga Karyasehat' },
+  { symbol: 'ACES', name: 'Ace Hardware Indonesia' },
+  { symbol: 'ERAA', name: 'Erajaya Swasembada' },
+  { symbol: 'MDKA', name: 'Merdeka Copper Gold' },
+  { symbol: 'BRIS', name: 'Bank Syariah Indonesia' },
+  { symbol: 'GOTO', name: 'GoTo Gojek Tokopedia' },
+  { symbol: 'BUKA', name: 'Bukalapak' },
+  { symbol: 'ARTO', name: 'Bank Jago' },
+  { symbol: 'EMTK', name: 'Elang Mahkota Teknologi' },
+  { symbol: 'MAPI', name: 'Mitra Adiperkasa' },
+];
+
+// Popular Crypto
+const CRYPTO_LIST = [
+  { symbol: 'BTC', name: 'Bitcoin' },
+  { symbol: 'ETH', name: 'Ethereum' },
+  { symbol: 'BNB', name: 'Binance Coin' },
+  { symbol: 'SOL', name: 'Solana' },
+  { symbol: 'XRP', name: 'Ripple' },
+  { symbol: 'ADA', name: 'Cardano' },
+  { symbol: 'DOGE', name: 'Dogecoin' },
+  { symbol: 'DOT', name: 'Polkadot' },
+];
+
 export default function InvestmentsPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [history, setHistory] = useState<AssetTransaction[]>([]);
@@ -26,6 +77,7 @@ export default function InvestmentsPage() {
   const [syncing, setSyncing] = useState(false);
 
   const [formData, setFormData] = useState({ type: 'stock', symbol: '', quantity: '', avg_buy_price: '', wallet_id: '' });
+  const [useManualSymbol, setUseManualSymbol] = useState(false);
   const [wallets, setWallets] = useState<WalletOption[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -128,6 +180,48 @@ export default function InvestmentsPage() {
     setFormData({ ...formData, avg_buy_price: rawVal });
   };
 
+  const syncPricesFromYahoo = async () => {
+    if (assets.length === 0) {
+      toast.error("No assets to sync");
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      const response = await fetch('/api/sync-prices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assets }),
+      });
+
+      if (!response.ok) throw new Error('Failed to sync prices');
+
+      const { updatedAssets } = await response.json();
+
+      // Update prices in database
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      for (const updated of updatedAssets) {
+        await supabase
+          .from('assets')
+          .update({
+            current_price: updated.current_price,
+            last_price_update: new Date().toISOString()
+          })
+          .eq('id', updated.id)
+          .eq('user_id', user.id);
+      }
+
+      toast.success("Prices synced from Yahoo Finance");
+      fetchAssets();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to sync prices");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const totalValue = assets.reduce((acc, curr) => acc + (curr.quantity * curr.current_price), 0);
   const totalCost = assets.reduce((acc, curr) => acc + (curr.quantity * curr.avg_buy_price), 0);
   const totalProfit = totalValue - totalCost;
@@ -141,9 +235,19 @@ export default function InvestmentsPage() {
           <h1 className="text-xl md:text-2xl font-bold tracking-tight text-blue-600">Portfolio</h1>
           <p className="text-slate-500 text-xs md:text-sm mt-0.5 font-bold uppercase tracking-widest">Growth & Allocation</p>
         </div>
-        <button onClick={() => { setEditingId(null); setFormData({ type: 'stock', symbol: '', quantity: '', avg_buy_price: '', wallet_id: '' }); setIsModalOpen(true); }} className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 shadow-lg flex items-center justify-center gap-2 active:scale-95 uppercase tracking-widest">
-          <Plus size={16} /> New Asset
-        </button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button
+            onClick={syncPricesFromYahoo}
+            disabled={syncing || assets.length === 0}
+            className="flex-1 sm:flex-none px-4 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-lg flex items-center justify-center gap-2 active:scale-95 uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCcw size={14} className={syncing ? 'animate-spin' : ''} />
+            {syncing ? 'Syncing...' : 'Refresh'}
+          </button>
+          <button onClick={() => { setEditingId(null); setFormData({ type: 'stock', symbol: '', quantity: '', avg_buy_price: '', wallet_id: '' }); setUseManualSymbol(false); setIsModalOpen(true); }} className="flex-1 sm:flex-none px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 shadow-lg flex items-center justify-center gap-2 active:scale-95 uppercase tracking-widest">
+            <Plus size={16} /> New Asset
+          </button>
+        </div>
       </header>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 mb-8">
@@ -243,17 +347,83 @@ export default function InvestmentsPage() {
                 <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={18} /></button>
               </div>
               <form onSubmit={handleManualSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Asset Type</label>
-                    <select required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold text-slate-900 outline-none" value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })}>
-                      <option value="stock">Stock</option><option value="crypto">Crypto</option><option value="bond">Bond</option><option value="mutual_fund">Fund</option>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Asset Type</label>
+                  <select required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold text-slate-900 outline-none" value={formData.type} onChange={(e) => { setFormData({ ...formData, type: e.target.value, symbol: '' }); setUseManualSymbol(false); }}>
+                    <option value="stock">Saham IDX</option>
+                    <option value="crypto">Crypto</option>
+                    <option value="mutual_fund">Reksadana</option>
+                    <option value="bond">Obligasi</option>
+                    <option value="gold">Emas</option>
+                    <option value="other">Lainnya</option>
+                  </select>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      {formData.type === 'stock' ? 'Kode Saham' : formData.type === 'crypto' ? 'Kode Crypto' : 'Symbol'}
+                    </label>
+                    {(formData.type === 'stock' || formData.type === 'crypto') && !editingId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUseManualSymbol(!useManualSymbol);
+                          setFormData({ ...formData, symbol: '' });
+                        }}
+                        className="text-[9px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-widest"
+                      >
+                        {useManualSymbol ? '← Pilih dari daftar' : 'Input manual →'}
+                      </button>
+                    )}
+                  </div>
+                  {formData.type === 'stock' && !useManualSymbol ? (
+                    <select
+                      required
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold text-slate-900 outline-none"
+                      value={formData.symbol}
+                      onChange={(e) => setFormData({ ...formData, symbol: e.target.value })}
+                      disabled={!!editingId}
+                    >
+                      <option value="">-- Pilih Saham --</option>
+                      {IDX_STOCKS.map((stock) => (
+                        <option key={stock.symbol} value={stock.symbol}>
+                          {stock.symbol} - {stock.name}
+                        </option>
+                      ))}
                     </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Symbol</label>
-                    <input type="text" placeholder="e.g. BBCA" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-bold uppercase text-slate-900 outline-none" value={formData.symbol} onChange={(e) => setFormData({ ...formData, symbol: e.target.value })} disabled={!!editingId} />
-                  </div>
+                  ) : formData.type === 'crypto' && !useManualSymbol ? (
+                    <select
+                      required
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold text-slate-900 outline-none"
+                      value={formData.symbol}
+                      onChange={(e) => setFormData({ ...formData, symbol: e.target.value })}
+                      disabled={!!editingId}
+                    >
+                      <option value="">-- Pilih Crypto --</option>
+                      {CRYPTO_LIST.map((crypto) => (
+                        <option key={crypto.symbol} value={crypto.symbol}>
+                          {crypto.symbol} - {crypto.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder={
+                        formData.type === 'stock' ? 'e.g. BBCA, TLKM' :
+                        formData.type === 'crypto' ? 'e.g. BTC, ETH' :
+                        formData.type === 'gold' ? 'XAU' : 'e.g. SYMBOL'
+                      }
+                      required
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-bold uppercase text-slate-900 outline-none"
+                      value={formData.symbol}
+                      onChange={(e) => setFormData({ ...formData, symbol: e.target.value })}
+                      disabled={!!editingId}
+                    />
+                  )}
+                  {formData.type === 'stock' && useManualSymbol && (
+                    <p className="text-[9px] text-slate-400 mt-1">Masukkan kode saham IDX (tanpa .JK)</p>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>

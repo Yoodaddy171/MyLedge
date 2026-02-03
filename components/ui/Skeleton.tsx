@@ -142,3 +142,157 @@ export function SkeletonForm() {
     </div>
   );
 }
+
+// Dashboard specific skeletons
+export function SkeletonMetricCard() {
+  return (
+    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+      <div className="space-y-2">
+        <Skeleton className="h-3 w-16" />
+        <Skeleton className="h-6 w-24" />
+        <Skeleton className="h-2 w-12" />
+      </div>
+      <Skeleton className="h-10 w-10 rounded-xl" />
+    </div>
+  );
+}
+
+export function SkeletonBankAccounts() {
+  return (
+    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <Skeleton className="h-5 w-28" />
+        <Skeleton className="h-4 w-16" />
+      </div>
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-10 rounded-xl" />
+              <div className="space-y-1">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            </div>
+            <Skeleton className="h-5 w-20" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function SkeletonRecentTransactions() {
+  return (
+    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <Skeleton className="h-5 w-36" />
+        <Skeleton className="h-4 w-16" />
+      </div>
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex items-center justify-between p-3 border-b border-slate-50 last:border-0">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-1 w-1 rounded-full" />
+              <div className="space-y-1">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
+            <Skeleton className="h-4 w-16" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function SkeletonGoalProgress() {
+  return (
+    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <Skeleton className="h-5 w-24" />
+        <Skeleton className="h-4 w-16" />
+      </div>
+      <div className="space-y-4">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="space-y-2">
+            <div className="flex justify-between">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-3 w-12" />
+            </div>
+            <Skeleton className="h-2 w-full rounded-full" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function SkeletonTransactionRow() {
+  return (
+    <tr className="animate-pulse">
+      <td className="px-6 py-3 text-center">
+        <Skeleton className="h-4 w-4 mx-auto" />
+      </td>
+      <td className="px-6 py-3">
+        <div className="flex items-center gap-3">
+          <Skeleton className="w-1 h-8 rounded-full" />
+          <div className="space-y-1">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+        </div>
+      </td>
+      <td className="px-4 py-3 hidden md:table-cell">
+        <Skeleton className="h-4 w-24" />
+      </td>
+      <td className="px-4 py-3 hidden lg:table-cell text-center">
+        <Skeleton className="h-6 w-16 mx-auto rounded-md" />
+      </td>
+      <td className="px-6 py-3 text-right">
+        <Skeleton className="h-4 w-20 ml-auto" />
+      </td>
+      <td className="px-6 py-3 text-center">
+        <div className="flex justify-center gap-1">
+          <Skeleton className="h-7 w-7 rounded-lg" />
+          <Skeleton className="h-7 w-7 rounded-lg" />
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+export function SkeletonDashboardFull() {
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto pb-20">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+        <div className="space-y-1">
+          <Skeleton className="h-7 w-32" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <Skeleton className="h-10 w-28 rounded-xl" />
+      </div>
+
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <SkeletonMetricCard key={i} />
+        ))}
+      </div>
+
+      {/* Main Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <SkeletonChart height={280} />
+          <SkeletonRecentTransactions />
+        </div>
+        <div className="space-y-6">
+          <SkeletonBankAccounts />
+          <SkeletonGoalProgress />
+        </div>
+      </div>
+    </div>
+  );
+}

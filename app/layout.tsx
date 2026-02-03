@@ -38,8 +38,10 @@ import { Toaster } from "sonner";
 import UrgentTaskNotification from "@/components/UrgentTaskNotification";
 import SmoothScroll from "@/components/SmoothScroll";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { QueryProvider } from "@/lib/react-query";
 import { GlobalDataProvider } from "@/contexts/GlobalDataContext";
 import NotificationCenter from "@/components/NotificationCenter";
+import { usePrefetch } from "@/hooks/usePrefetch";
 import type { AppUser } from '@/lib/types';
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -259,8 +261,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#f8fafc] text-black`}>
-        <GlobalDataProvider>
-          <SmoothScroll>
+        <QueryProvider>
+          <GlobalDataProvider>
+            <SmoothScroll>
             <Toaster position="top-center" richColors />
             <UrgentTaskNotification />
             <div className="flex flex-col md:flex-row min-h-screen">
@@ -343,8 +346,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </ErrorBoundary>
               </main>
             </div>
-          </SmoothScroll>
-        </GlobalDataProvider>
+            </SmoothScroll>
+          </GlobalDataProvider>
+        </QueryProvider>
       </body>
     </html>
   );
@@ -368,6 +372,15 @@ function NavSection({
   collapsed: boolean;
   hasActiveItem: boolean;
 }) {
+  const { prefetchForRoute } = usePrefetch();
+
+  const handleMouseEnter = (href: string) => {
+    const prefetchFn = prefetchForRoute(href);
+    if (prefetchFn) {
+      prefetchFn();
+    }
+  };
+
   if (collapsed) {
     // Collapsed mode: show only icons with tooltip
     return (
@@ -376,6 +389,7 @@ function NavSection({
           <a
             key={item.href}
             href={item.href}
+            onMouseEnter={() => handleMouseEnter(item.href)}
             className={`flex items-center justify-center p-2.5 rounded-lg transition-all ${
               pathname === item.href
                 ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
@@ -442,9 +456,20 @@ function NavSection({
 }
 
 function NavItem({ href, icon, label, active }: { href: string, icon: React.ReactNode, label: string, active: boolean }) {
+  const { prefetchForRoute } = usePrefetch();
+
+  const handleMouseEnter = () => {
+    // Prefetch data when hovering over navigation link
+    const prefetchFn = prefetchForRoute(href);
+    if (prefetchFn) {
+      prefetchFn();
+    }
+  };
+
   return (
     <a
       href={href}
+      onMouseEnter={handleMouseEnter}
       className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all ${active
         ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
         : "text-slate-400 hover:bg-white/5 hover:text-white"

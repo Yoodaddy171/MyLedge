@@ -1,8 +1,22 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { logger } from '@/lib/logger';
+import { queryKeys } from '@/lib/react-query';
+import {
+  useWallets,
+  useCategories,
+  useMasterItems,
+  useProjects,
+  useTags,
+  useDebts,
+  useGoals,
+  useAssets,
+  useRecurringTransactions,
+  useBudgetAlerts,
+  useSubmissions,
+} from '@/hooks/useQueries';
 
 // Define types based on database schema
 export type Wallet = {
@@ -100,6 +114,9 @@ export type Debt = {
   notes?: string | null;
   created_at: string;
   updated_at: string;
+  debt_type?: string | null;
+  installment_count?: number | null;
+  installment_paid?: number | null;
 };
 
 export type Goal = {
@@ -145,6 +162,7 @@ export type RecurringTransaction = {
   to_wallet_id?: number | null;
   item_id?: number | null;
   project_id?: number | null;
+  debt_id?: number | null;
   frequency: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
   start_date: string;
   end_date?: string | null;
@@ -233,163 +251,171 @@ const GlobalDataContext = createContext<GlobalDataContextType | undefined>(undef
 
 export function GlobalDataProvider({ children }: { children: ReactNode }) {
   const [userId, setUserId] = useState<string | null>(null);
-  const [wallets, setWallets] = useState<Wallet[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [masterItems, setMasterItems] = useState<TransactionItem[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [assets, setAssets] = useState<Asset[]>([]);
-  const [debts, setDebts] = useState<Debt[]>([]);
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [budgetAlerts, setBudgetAlerts] = useState<BudgetAlert[]>([]);
-
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const queryClient = useQueryClient();
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // Use React Query hooks for all data fetching
+  const walletsQuery = useWallets();
+  const categoriesQuery = useCategories();
+  const masterItemsQuery = useMasterItems();
+  const projectsQuery = useProjects();
+  const tagsQuery = useTags();
+  const debtsQuery = useDebts();
+  const goalsQuery = useGoals();
+  const assetsQuery = useAssets();
+  const recurringQuery = useRecurringTransactions();
+  const alertsQuery = useBudgetAlerts();
+  const submissionsQuery = useSubmissions();
 
-      // CRITICAL: Get authenticated user first - ALL queries must filter by user_id
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+  // Track loading state
+  const loading =
+    walletsQuery.isLoading ||
+    categoriesQuery.isLoading ||
+    masterItemsQuery.isLoading ||
+    projectsQuery.isLoading ||
+    tagsQuery.isLoading ||
+    debtsQuery.isLoading ||
+    goalsQuery.isLoading ||
+    assetsQuery.isLoading ||
+    recurringQuery.isLoading ||
+    alertsQuery.isLoading ||
+    submissionsQuery.isLoading;
 
-      if (authError || !user) {
-        logger.warn('No authenticated user, clearing data', { component: 'GlobalDataProvider' });
-        // Clear all data if no user
-        setUserId(null);
-        setWallets([]);
-        setMasterItems([]);
-        setCategories([]);
-        setProjects([]);
-        setAssets([]);
-        setDebts([]);
-        setGoals([]);
-        setSubmissions([]);
-        setRecurringTransactions([]);
-        setTags([]);
-        setBudgetAlerts([]);
-        setLoading(false);
-        return;
-      }
-
-      setUserId(user.id);
-
-      // Fetch all master data in parallel - ALL QUERIES MUST FILTER BY USER_ID
-      const [
-        walletsRes,
-        itemsRes,
-        categoriesRes,
-        projectsRes,
-        assetsRes,
-        debtsRes,
-        goalsRes,
-        submissionsRes,
-        recurringRes,
-        tagsRes,
-        alertsRes
-      ] = await Promise.all([
-        // Wallets - filter by user_id
-        supabase.from('wallet_balances_view').select('*').eq('user_id', user.id),
-        // Transaction items - filter by user_id
-        supabase.from('transaction_items')
-          .select('*, categories!fk_transaction_items_category(id, name, type)')
-          .eq('user_id', user.id),
-        // Categories - filter by user_id
-        supabase.from('categories').select('*').eq('user_id', user.id),
-        // Projects - filter by user_id
-        supabase.from('projects')
-          .select('*')
-          .eq('user_id', user.id)
-          .neq('status', 'cancelled'),
-        // Assets - filter by user_id
-        supabase.from('assets').select('*').eq('user_id', user.id),
-        // Debts - filter by user_id
-        supabase.from('debts')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('is_paid', false)
-          .gt('remaining_amount', 0),
-        // Financial goals - filter by user_id
-        supabase.from('financial_goals').select('*').eq('user_id', user.id),
-        // Submissions - filter by user_id
-        supabase.from('submissions').select('*').eq('user_id', user.id),
-        // Recurring transactions - filter by user_id
-        supabase.from('recurring_transactions')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('next_occurrence', { ascending: true }),
-        // Transaction tags - filter by user_id
-        supabase.from('transaction_tags')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('name', { ascending: true }),
-        // Budget alerts - filter by user_id
-        supabase.from('budget_alerts')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('is_read', false)
-          .order('created_at', { ascending: false })
-      ]);
-
-      // Handle errors
-      if (walletsRes.error) throw walletsRes.error;
-      if (itemsRes.error) throw itemsRes.error;
-      if (categoriesRes.error) throw categoriesRes.error;
-      if (projectsRes.error) logger.warn('Projects fetch error', { component: 'GlobalDataProvider' });
-      if (assetsRes.error) logger.warn('Assets fetch error', { component: 'GlobalDataProvider' });
-      if (debtsRes.error) logger.warn('Debts fetch error', { component: 'GlobalDataProvider' });
-      if (goalsRes.error) logger.warn('Goals fetch error', { component: 'GlobalDataProvider' });
-      if (submissionsRes.error) logger.warn('Submissions fetch error', { component: 'GlobalDataProvider' });
-      if (recurringRes.error) logger.warn('Recurring fetch error', { component: 'GlobalDataProvider' });
-      if (tagsRes.error) logger.warn('Tags fetch error', { component: 'GlobalDataProvider' });
-      if (alertsRes.error) logger.warn('Budget alerts fetch error', { component: 'GlobalDataProvider' });
-
-      // Set state with fetched data
-      setWallets((walletsRes.data || []) as Wallet[]);
-      setMasterItems((itemsRes.data || []) as TransactionItem[]);
-      setCategories((categoriesRes.data || []) as Category[]);
-      setProjects((projectsRes.data || []) as Project[]);
-      setAssets((assetsRes.data || []) as Asset[]);
-      setDebts((debtsRes.data || []) as Debt[]);
-      setGoals((goalsRes.data || []) as Goal[]);
-      setSubmissions((submissionsRes.data || []) as Submission[]);
-      setRecurringTransactions((recurringRes.data || []) as RecurringTransaction[]);
-      setTags((tagsRes.data || []) as Tag[]);
-      setBudgetAlerts((alertsRes.data || []) as BudgetAlert[]);
-
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      console.error('Error fetching global data:', error);
-      logger.error('Failed to fetch global data', error, { component: 'GlobalDataProvider' });
-      setError(error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
+  // Get user ID on mount
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id ?? null);
+    };
+    getUser();
 
-  const value = {
-    wallets,
-    categories,
-    masterItems,
-    projects,
-    assets,
-    debts,
-    goals,
-    submissions,
-    recurringTransactions,
-    tags,
-    budgetAlerts,
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user?.id ?? null);
+      if (!session?.user) {
+        // Clear all queries when logged out
+        queryClient.clear();
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [queryClient]);
+
+  // Set up Supabase Realtime subscriptions for live updates
+  useEffect(() => {
+    if (!userId) return;
+
+    // Subscribe to transactions changes for real-time updates
+    const transactionsChannel = supabase
+      .channel('transactions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          // Invalidate related queries when transactions change
+          queryClient.invalidateQueries({ queryKey: queryKeys.wallets });
+          queryClient.invalidateQueries({ queryKey: ['transactions'] });
+          queryClient.invalidateQueries({ queryKey: queryKeys.dashboardStats });
+        }
+      )
+      .subscribe();
+
+    // Subscribe to wallet balance changes
+    const walletsChannel = supabase
+      .channel('wallets-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'wallets',
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: queryKeys.wallets });
+          queryClient.invalidateQueries({ queryKey: queryKeys.dashboardStats });
+        }
+      )
+      .subscribe();
+
+    // Subscribe to budget alerts
+    const alertsChannel = supabase
+      .channel('budget-alerts-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'budget_alerts',
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: queryKeys.budgetAlerts });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(transactionsChannel);
+      supabase.removeChannel(walletsChannel);
+      supabase.removeChannel(alertsChannel);
+    };
+  }, [userId, queryClient]);
+
+  // Collect any errors
+  useEffect(() => {
+    const errors = [
+      walletsQuery.error,
+      categoriesQuery.error,
+      masterItemsQuery.error,
+    ].filter(Boolean);
+
+    if (errors.length > 0) {
+      setError(errors[0] as Error);
+    } else {
+      setError(null);
+    }
+  }, [walletsQuery.error, categoriesQuery.error, masterItemsQuery.error]);
+
+  // Refresh function that invalidates all queries
+  const refreshData = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallets }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.masterItems }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.tags }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.debts }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.assets }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.recurringTransactions }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.budgetAlerts }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.submissions }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboardStats }),
+    ]);
+  };
+
+  const value: GlobalDataContextType = {
+    wallets: walletsQuery.data || [],
+    categories: categoriesQuery.data || [],
+    masterItems: masterItemsQuery.data || [],
+    projects: projectsQuery.data || [],
+    assets: assetsQuery.data || [],
+    debts: debtsQuery.data || [],
+    goals: goalsQuery.data || [],
+    submissions: submissionsQuery.data || [],
+    recurringTransactions: recurringQuery.data || [],
+    tags: tagsQuery.data || [],
+    budgetAlerts: alertsQuery.data || [],
     userId,
     loading,
     error,
-    refreshData: fetchData
+    refreshData,
   };
 
   return (

@@ -27,7 +27,11 @@ export default function DebtsPage() {
     monthly_payment: '',
     interest_rate: '',
     due_date: '',
-    notes: ''
+    notes: '',
+    debt_type: 'regular' as 'regular' | 'paylater' | 'loan' | 'credit_card',
+    installment_count: '',
+    start_date: new Date().toISOString().split('T')[0],
+    wallet_id: ''
   });
 
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
@@ -79,21 +83,85 @@ export default function DebtsPage() {
     e.preventDefault();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+
+    const isPaylater = formData.debt_type === 'paylater';
+    const installmentCount = isPaylater ? Number(formData.installment_count) : null;
+    const monthlyPayment = isPaylater && installmentCount
+      ? Math.ceil(Number(formData.total_amount) / installmentCount)
+      : Number(formData.monthly_payment) || 0;
+
+    // Calculate due_date based on installment count if paylater
+    let dueDate = formData.due_date || null;
+    if (isPaylater && installmentCount && formData.start_date) {
+      const startDate = new Date(formData.start_date);
+      startDate.setMonth(startDate.getMonth() + installmentCount);
+      dueDate = startDate.toISOString().split('T')[0];
+    }
+
     const payload = {
       user_id: user.id,
       name: formData.name.trim(),
       creditor: formData.creditor.trim(),
       total_amount: Number(formData.total_amount),
-      remaining_amount: Number(formData.remaining_amount),
-      monthly_payment: Number(formData.monthly_payment) || 0,
+      remaining_amount: Number(formData.remaining_amount || formData.total_amount),
+      monthly_payment: monthlyPayment,
       interest_rate: Number(formData.interest_rate) || 0,
-      due_date: formData.due_date || null,
+      start_date: formData.start_date || null,
+      due_date: dueDate,
       notes: formData.notes.trim(),
-      is_paid: Number(formData.remaining_amount) <= 0
+      is_paid: Number(formData.remaining_amount || formData.total_amount) <= 0,
+      debt_type: formData.debt_type,
+      installment_count: installmentCount,
+      installment_paid: 0
     };
-    if (editingId) await supabase.from('debts').update(payload).eq('id', editingId);
-    else await supabase.from('debts').insert(payload);
-    setIsModalOpen(false); setEditingId(null);
+
+    let debtId = editingId;
+
+    if (editingId) {
+      await supabase.from('debts').update(payload).eq('id', editingId);
+    } else {
+      const { data: newDebt, error } = await supabase.from('debts').insert(payload).select().single();
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      debtId = newDebt.id;
+
+      // Create recurring transaction for paylater
+      if (isPaylater && installmentCount && formData.wallet_id && debtId) {
+        const startDate = new Date(formData.start_date);
+        // Calculate end date (last payment month)
+        const endDate = new Date(formData.start_date);
+        endDate.setMonth(endDate.getMonth() + installmentCount - 1);
+
+        const recurringPayload = {
+          user_id: user.id,
+          type: 'expense' as const,
+          amount: monthlyPayment,
+          description: `Cicilan ${formData.name.trim()}`,
+          notes: `Paylater - ${installmentCount}x cicilan`,
+          wallet_id: Number(formData.wallet_id),
+          debt_id: debtId,
+          frequency: 'monthly' as const,
+          start_date: formData.start_date,
+          end_date: endDate.toISOString().split('T')[0],
+          next_occurrence: formData.start_date,
+          is_active: true,
+          auto_generate: true
+        };
+
+        const { error: recurringError } = await supabase.from('recurring_transactions').insert(recurringPayload);
+        if (recurringError) {
+          console.error('Failed to create recurring transaction:', recurringError);
+          toast.error('Debt created but failed to setup recurring payment');
+        } else {
+          toast.success(`Paylater added with ${installmentCount}x monthly recurring payment`);
+        }
+      }
+    }
+
+    setIsModalOpen(false);
+    setEditingId(null);
     setFormData({
       name: '',
       creditor: '',
@@ -102,10 +170,16 @@ export default function DebtsPage() {
       monthly_payment: '',
       interest_rate: '',
       due_date: '',
-      notes: ''
+      notes: '',
+      debt_type: 'regular',
+      installment_count: '',
+      start_date: new Date().toISOString().split('T')[0],
+      wallet_id: ''
     });
     fetchDebts();
-    toast.success(editingId ? "Debt updated" : "New debt added");
+    if (!isPaylater || editingId) {
+      toast.success(editingId ? "Debt updated" : "New debt added");
+    }
   };
 
   const handlePaySubmit = async (e: React.FormEvent) => {
@@ -152,7 +226,11 @@ export default function DebtsPage() {
       monthly_payment: (debt.monthly_payment || '').toString(),
       interest_rate: (debt.interest_rate || '').toString(),
       due_date: debt.due_date || '',
-      notes: debt.notes || ''
+      notes: debt.notes || '',
+      debt_type: debt.debt_type || 'regular',
+      installment_count: (debt.installment_count || '').toString(),
+      start_date: debt.start_date || new Date().toISOString().split('T')[0],
+      wallet_id: ''
     });
     setIsModalOpen(true);
   };
@@ -180,6 +258,24 @@ export default function DebtsPage() {
   const totalOriginal = debts.reduce((acc, curr) => acc + Number(curr.total_amount), 0);
   const repaymentProgress = totalOriginal > 0 ? ((totalOriginal - totalDebt) / totalOriginal) * 100 : 0;
 
+  // Filter debts due within 7 days
+  const upcomingDebts = React.useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sevenDaysLater = new Date(today);
+    sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+
+    return debts
+      .filter(debt => {
+        if (debt.remaining_amount <= 0) return false;
+        if (!debt.due_date) return false;
+        const dueDate = new Date(debt.due_date);
+        dueDate.setHours(0, 0, 0, 0);
+        return dueDate >= today && dueDate <= sevenDaysLater;
+      })
+      .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
+  }, [debts]);
+
   return (
     <div className="max-w-6xl mx-auto pb-20">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -189,7 +285,7 @@ export default function DebtsPage() {
         </div>
         <button onClick={() => {
           setEditingId(null);
-          setFormData({ name: '', creditor: '', total_amount: '', remaining_amount: '', monthly_payment: '', interest_rate: '', due_date: '', notes: '' });
+          setFormData({ name: '', creditor: '', total_amount: '', remaining_amount: '', monthly_payment: '', interest_rate: '', due_date: '', notes: '', debt_type: 'regular', installment_count: '', start_date: new Date().toISOString().split('T')[0], wallet_id: '' });
           setIsModalOpen(true);
         }} className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 text-white rounded-xl text-[10px] md:text-xs font-bold hover:bg-slate-800 shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 uppercase tracking-widest">
           <Plus size={16} /> Add Debt
@@ -200,6 +296,71 @@ export default function DebtsPage() {
         <MetricCard title="Remaining" value={totalDebt} icon={<TrendingDown className="text-red-500" size={16} />} sub="Owed Balance" color="text-red-600" />
         <MetricCard title="Progress" value={totalOriginal - totalDebt} percentage={repaymentProgress} icon={<CheckCircle2 className="text-emerald-500" size={16} />} sub="Total Paid" color="text-emerald-600" isProgress />
       </div>
+
+      {/* Upcoming Due Dates Alert */}
+      {upcomingDebts.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-200 rounded-2xl p-4 md:p-5 mb-6 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-amber-100 rounded-xl shrink-0">
+              <AlertCircle className="text-amber-600" size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm md:text-base font-bold text-amber-900">⚠️ Segera Jatuh Tempo</h3>
+                <span className="px-2 py-0.5 bg-amber-200 text-amber-800 rounded-full text-[10px] font-bold">
+                  {upcomingDebts.length} tagihan
+                </span>
+              </div>
+              <div className="space-y-2">
+                {upcomingDebts.map(debt => {
+                  const dueDate = new Date(debt.due_date!);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  dueDate.setHours(0, 0, 0, 0);
+                  const daysLeft = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                  const isUrgent = daysLeft <= 2;
+
+                  return (
+                    <div
+                      key={debt.id}
+                      className="flex items-center justify-between p-3 bg-white rounded-xl border border-amber-100 shadow-sm"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${isUrgent ? 'bg-red-500 animate-pulse' : 'bg-amber-500'}`} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs md:text-sm font-bold text-slate-900 truncate">
+                            {debt.name}
+                          </p>
+                          <p className="text-[10px] text-slate-500">
+                            {debt.creditor || 'No creditor'} • Jatuh tempo {dueDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 ml-2 shrink-0">
+                        <div className="text-right">
+                          <p className="text-xs md:text-sm font-bold text-slate-900">
+                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(debt.remaining_amount)}
+                          </p>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold ${isUrgent ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                            }`}>
+                            {daysLeft === 0 ? '🔥 Hari Ini!' : daysLeft === 1 ? '⏰ Besok' : `${daysLeft} hari lagi`}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => openPayModal(debt)}
+                          className="px-3 py-1.5 bg-emerald-500 text-white text-[10px] font-bold rounded-lg hover:bg-emerald-600 transition-all shadow-sm"
+                        >
+                          Bayar
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-3">
         {loading ? (
@@ -227,9 +388,19 @@ export default function DebtsPage() {
                           <Landmark size={18} />
                         </div>
                         <div className="min-w-0">
-                          <h3 className={`text-sm font-bold truncate max-w-[150px] ${debt.remaining_amount <= 0 ? 'line-through text-slate-400' : 'text-slate-900'}`}>{debt.name}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className={`text-sm font-bold truncate max-w-[120px] ${debt.remaining_amount <= 0 ? 'line-through text-slate-400' : 'text-slate-900'}`}>{debt.name}</h3>
+                            {(debt as any).debt_type === 'paylater' && (
+                              <span className="px-1.5 py-0.5 bg-violet-100 text-violet-600 text-[8px] font-bold rounded uppercase tracking-wider">
+                                {(debt as any).installment_count}x
+                              </span>
+                            )}
+                          </div>
                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1.5 mt-0.5">
                             <Calendar size={10} /> {debt.due_date ? new Date(debt.due_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : 'No Deadline'}
+                            {(debt as any).debt_type === 'paylater' && (debt as any).installment_paid !== undefined && (
+                              <span className="text-violet-500">• {(debt as any).installment_paid}/{(debt as any).installment_count} paid</span>
+                            )}
                           </p>
                         </div>
                       </div>
@@ -313,38 +484,131 @@ export default function DebtsPage() {
               </div>
               <form onSubmit={handleManualSubmit} className="space-y-4">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Debt Name</label>
-                  <input type="text" placeholder="e.g. Car Loan" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-900 outline-none" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Tipe Hutang</label>
+                  <select
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold text-slate-900 outline-none"
+                    value={formData.debt_type}
+                    onChange={(e) => setFormData({ ...formData, debt_type: e.target.value as any, remaining_amount: formData.debt_type !== 'paylater' && e.target.value === 'paylater' ? formData.total_amount : formData.remaining_amount })}
+                    disabled={!!editingId}
+                  >
+                    <option value="regular">Hutang Biasa</option>
+                    <option value="paylater">Paylater / Cicilan</option>
+                    <option value="loan">Pinjaman Bank</option>
+                    <option value="credit_card">Kartu Kredit</option>
+                  </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Creditor</label>
-                  <input type="text" placeholder="Bank, Person, etc." className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-900 outline-none" value={formData.creditor} onChange={(e) => setFormData({ ...formData, creditor: e.target.value })} />
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Nama Hutang</label>
+                  <input type="text" placeholder={formData.debt_type === 'paylater' ? 'e.g. iPhone 15 Shopee Paylater' : 'e.g. Car Loan'} required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-900 outline-none" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Kreditor</label>
+                  <input type="text" placeholder={formData.debt_type === 'paylater' ? 'Shopee, Tokopedia, dll.' : 'Bank, Person, etc.'} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-900 outline-none" value={formData.creditor} onChange={(e) => setFormData({ ...formData, creditor: e.target.value })} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Original</label>
-                    <input type="text" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-900 outline-none" value={formatDisplayAmount(formData.total_amount)} onChange={(e) => setFormData({ ...formData, total_amount: e.target.value.replace(/\D/g, "") })} />
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Total Hutang</label>
+                    <input type="text" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-900 outline-none" value={formatDisplayAmount(formData.total_amount)} onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "");
+                      setFormData({ ...formData, total_amount: val, remaining_amount: formData.debt_type === 'paylater' ? val : formData.remaining_amount });
+                    }} />
                   </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Remaining</label>
-                    <input type="text" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-900 outline-none" value={formatDisplayAmount(formData.remaining_amount)} onChange={(e) => setFormData({ ...formData, remaining_amount: e.target.value.replace(/\D/g, "") })} />
-                  </div>
+                  {formData.debt_type !== 'paylater' ? (
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Sisa</label>
+                      <input type="text" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-900 outline-none" value={formatDisplayAmount(formData.remaining_amount)} onChange={(e) => setFormData({ ...formData, remaining_amount: e.target.value.replace(/\D/g, "") })} />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Jumlah Cicilan</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="60"
+                        placeholder="1"
+                        required
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-900 outline-none"
+                        value={formData.installment_count}
+                        onChange={(e) => setFormData({ ...formData, installment_count: e.target.value })}
+                        disabled={!!editingId}
+                      />
+                    </div>
+                  )}
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Monthly</label>
-                    <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-900 outline-none" value={formatDisplayAmount(formData.monthly_payment)} onChange={(e) => setFormData({ ...formData, monthly_payment: e.target.value.replace(/\D/g, "") })} />
+
+                {formData.debt_type === 'paylater' && formData.total_amount && formData.installment_count && (
+                  <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
+                    <p className="text-[9px] font-bold text-blue-600 uppercase tracking-widest mb-1">Cicilan per Bulan</p>
+                    <p className="text-lg font-bold text-blue-700">
+                      {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Math.ceil(Number(formData.total_amount) / Number(formData.installment_count)))}
+                    </p>
                   </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Due Date</label>
-                    <input type="date" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-[10px] font-bold text-slate-900 outline-none" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} />
+                )}
+
+                {formData.debt_type === 'paylater' && !editingId && (
+                  <div className="p-4 bg-amber-50/50 rounded-xl border border-amber-100 space-y-3">
+                    <p className="text-[9px] font-bold text-amber-700 uppercase tracking-widest">Setup Recurring Payment</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[9px] font-bold text-amber-600 uppercase tracking-widest mb-1 block">Mulai Cicilan</label>
+                        <input
+                          type="date"
+                          required
+                          className="w-full bg-white border border-amber-200 rounded-lg px-3 py-2 text-[10px] font-bold text-slate-900 outline-none"
+                          value={formData.start_date}
+                          onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-bold text-amber-600 uppercase tracking-widest mb-1 block">Bayar dari Wallet</label>
+                        <select
+                          required
+                          className="w-full bg-white border border-amber-200 rounded-lg px-3 py-2 text-[10px] font-bold text-slate-900 outline-none"
+                          value={formData.wallet_id}
+                          onChange={(e) => setFormData({ ...formData, wallet_id: e.target.value })}
+                        >
+                          <option value="">Pilih wallet...</option>
+                          {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    {formData.start_date && Number(formData.installment_count) > 1 && (
+                      <div className="p-2.5 bg-violet-50 rounded-lg border border-violet-100">
+                        <p className="text-[9px] font-bold text-violet-500 uppercase tracking-widest mb-1">Periode Cicilan</p>
+                        <p className="text-xs font-bold text-violet-700">
+                          {(() => {
+                            const startDate = new Date(formData.start_date);
+                            const endDate = new Date(formData.start_date);
+                            endDate.setMonth(endDate.getMonth() + Number(formData.installment_count) - 1);
+                            const formatDate = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+                            return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+                          })()}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                </div>
+                )}
+
+                {formData.debt_type !== 'paylater' && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Cicilan/Bulan</label>
+                      <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-900 outline-none" value={formatDisplayAmount(formData.monthly_payment)} onChange={(e) => setFormData({ ...formData, monthly_payment: e.target.value.replace(/\D/g, "") })} />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Jatuh Tempo</label>
+                      <input type="date" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-[10px] font-bold text-slate-900 outline-none" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} />
+                    </div>
+                  </div>
+                )}
+
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Notes</label>
-                  <textarea placeholder="Terms, details..." className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold text-slate-900 outline-none h-20 resize-none" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Catatan</label>
+                  <textarea placeholder="Detail, terms, dll..." className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-bold text-slate-900 outline-none h-16 resize-none" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
                 </div>
-                <button type="submit" className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-slate-800 transition-all mt-2 text-xs uppercase tracking-widest active:scale-[0.98]">Save Debt Record</button>
+                <button type="submit" className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-slate-800 transition-all mt-2 text-xs uppercase tracking-widest active:scale-[0.98]">
+                  {formData.debt_type === 'paylater' && !editingId ? 'Simpan & Buat Recurring' : 'Simpan'}
+                </button>
               </form>
             </motion.div>
           </div>

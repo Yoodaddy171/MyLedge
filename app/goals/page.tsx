@@ -19,13 +19,12 @@ interface Goal {
   current_amount: number;
   deadline?: string;
   status: GoalStatus;
-  linked_wallet_id?: any;
   description?: string;
   created_at?: string;
 }
 
 export default function GoalsPage() {
-  const { goals, wallets, refreshData } = useGlobalData();
+  const { goals, refreshData } = useGlobalData();
   const [allGoals, setAllGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -35,7 +34,6 @@ export default function GoalsPage() {
     target_amount: '',
     current_amount: '',
     deadline: '',
-    linked_wallet_id: '',
     description: '',
   });
 
@@ -77,7 +75,6 @@ export default function GoalsPage() {
       target_amount: goal.target_amount.toString(),
       current_amount: goal.current_amount.toString(),
       deadline: goal.deadline || '',
-      linked_wallet_id: goal.linked_wallet_id?.toString() || '',
       description: goal.description || '',
     });
     setIsModalOpen(true);
@@ -95,7 +92,6 @@ export default function GoalsPage() {
       current_amount: parseFloat(formData.current_amount || '0'),
       deadline: formData.deadline || null,
       status: 'active' as GoalStatus,
-      linked_wallet_id: formData.linked_wallet_id ? parseInt(formData.linked_wallet_id) : null,
       description: formData.description.trim() || null,
     };
 
@@ -114,7 +110,6 @@ export default function GoalsPage() {
         target_amount: '',
         current_amount: '',
         deadline: '',
-        linked_wallet_id: '',
         description: '',
       });
       await fetchAllGoals();
@@ -181,7 +176,6 @@ export default function GoalsPage() {
               target_amount: '',
               current_amount: '',
               deadline: '',
-              linked_wallet_id: '',
               description: '',
             });
             setIsModalOpen(true);
@@ -407,24 +401,6 @@ export default function GoalsPage() {
                     value={formData.deadline}
                     onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
                   />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">
-                    Linked Wallet (Optional)
-                  </label>
-                  <select
-                    className="w-full text-sm p-2.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 text-slate-900 font-bold"
-                    value={formData.linked_wallet_id}
-                    onChange={(e) => setFormData({ ...formData, linked_wallet_id: e.target.value })}
-                  >
-                    <option value="">None</option>
-                    {wallets.map((wallet) => (
-                      <option key={wallet.id} value={wallet.id}>
-                        {wallet.name}
-                      </option>
-                    ))}
-                  </select>
                 </div>
 
                 <div>
